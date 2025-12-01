@@ -1,0 +1,87 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+env/
+ENV/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+# Large model files - use Git LFS or download separately
+final_model_ast (1).pt
+final_model.keras
+*.pt
+*.pth
+*.h5
+*.keras
+
+# Patient data and reports (sensitive)
+backend/patient_records.json
+backend/uploads/
+backend/outputs/
+backend/reports/
+outputs/
+reports/
+
+# Vector database storage
+backend/qdrant_storage/
+frontend/qdrant_storage/
+qdrant_storage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.cache/
+
+# Temporary files
+*.tmp
+*.temp
+ngrok-v3-stable-linux-amd64.tgz
+
+# Test images and audio (keep samples in docs/)
+# covid00186.jpg
+# fib.jpeg
+# pn1.jpeg
+# xray.jpeg
+# H005_R4.wav
+

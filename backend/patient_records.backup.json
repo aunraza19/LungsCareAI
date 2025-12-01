@@ -1,0 +1,242 @@
+{
+  "counter": 108,
+  "patients": [
+    {
+      "name": "Aun Raza",
+      "patient_number": "PN101",
+      "registration_date": "2025-09-16 00:39:51",
+      "reports": [
+        {
+          "type": "X-ray Analysis (Basic)",
+          "date": "2025-09-16 00:42:15",
+          "result": "pneumothorax",
+          "confidence": 89.01,
+          "report_path": "reports/PN101_20250916_004215_XrayReport.pdf",
+          "file_name": "1.2.276.0.7230010.3.1.4.8323329.357.1517875162.533920.png"
+        },
+        {
+          "type": "X-ray Analysis (Basic)",
+          "date": "2025-09-16 01:01:46",
+          "result": "covid",
+          "confidence": 99.8,
+          "report_path": "reports/PN101_20250916_010146_XrayReport.pdf",
+          "file_name": "COVID19(52).jpg"
+        },
+        {
+          "type": "X-ray Analysis (Visualization)",
+          "date": "2025-09-16 01:08:24",
+          "result": "covid",
+          "confidence": 99.8,
+          "report_path": "reports/PN101_20250916_010823_XrayReport.pdf",
+          "visualization_path": "outputs/32bf7570-698a-4bcf-848e-20b42423335f_xray_analysis.png",
+          "file_name": "COVID19(52).jpg"
+        },
+        {
+          "type": "Audio Analysis (Basic)",
+          "date": "2025-09-17 11:35:29",
+          "result": "Abnormal",
+          "confidence": 55.04,
+          "report_path": "reports/PN101_20250917_113529_LungReport.pdf",
+          "file_name": "H005_R4.wav"
+        },
+        {
+          "type": "Audio Analysis (Attention XAI)",
+          "date": "2025-09-17 11:35:57",
+          "result": "Abnormal",
+          "confidence": 55.04,
+          "report_path": "reports/PN101_20250917_113557_LungReport.pdf",
+          "visualization_path": "outputs/9780ed3a-4187-4734-a9eb-f25a9d8fa735_attention_rollout.png",
+          "file_name": "H005_R4.wav"
+        },
+        {
+          "type": "X-ray Analysis (Basic)",
+          "date": "2025-09-17 11:46:15",
+          "result": "covid",
+          "confidence": 97.5,
+          "report_path": "reports/PN101_20250917_114615_XrayReport.pdf",
+          "file_name": "fib.jpeg"
+        }
+      ]
+    },
+    {
+      "name": "Ramia Riasat",
+      "patient_number": "PN102",
+      "registration_date": "2025-09-16 00:54:49",
+      "reports": [
+        {
+          "type": "X-ray Analysis (Basic)",
+          "date": "2025-09-16 00:57:14",
+          "result": "pneumothorax",
+          "confidence": 89.64,
+          "report_path": "reports/PN102_20250916_005714_XrayReport.pdf",
+          "file_name": "Xray.jpg"
+        }
+      ]
+    },
+    {
+      "name": "Ahmed rajput",
+      "patient_number": "PN103",
+      "registration_date": "2025-09-16 01:02:22",
+      "reports": [
+        {
+          "type": "X-ray Analysis (Basic)",
+          "date": "2025-09-16 01:05:54",
+          "result": "pneumothorax",
+          "confidence": 89.64,
+          "report_path": "reports/PN103_20250916_010554_XrayReport.pdf",
+          "file_name": "IMG-20250916-WA0001.jpg"
+        }
+      ]
+    },
+    {
+      "name": "Ali",
+      "patient_number": "PN104",
+      "registration_date": "2025-09-16 01:10:56",
+      "reports": [
+        {
+          "type": "X-ray Analysis (Visualization)",
+          "date": "2025-09-17 10:08:05",
+          "result": "control",
+          "confidence": 58.17,
+          "report_path": "reports/PN104_20250917_100803_XrayReport.pdf",
+          "visualization_path": "outputs/dd5e4545-addb-440e-b63d-610558a9bf70_xray_analysis.png",
+          "file_name": "pn1.jpeg"
+        },
+        {
+          "type": "X-ray Analysis (Visualization)",
+          "date": "2025-09-17 10:11:31",
+          "result": "covid",
+          "confidence": 98.27,
+          "report_path": "reports/PN104_20250917_101130_XrayReport.pdf",
+          "visualization_path": "outputs/4ff566de-19af-4c08-a55e-a6f384608ebd_xray_analysis.png",
+          "file_name": "d2efcf6bc1685389c64459f3354ce9_big_gallery.jpeg"
+        },
+        {
+          "type": "X-ray Analysis (Visualization)",
+          "date": "2025-09-17 10:33:08",
+          "result": "covid",
+          "confidence": 97.5,
+          "report_path": "reports/PN104_20250917_103307_XrayReport.pdf",
+          "visualization_path": "outputs/a6b843ec-df53-4e69-adfa-43b2e04b2ccc_xray_analysis.png",
+          "file_name": "fib.jpeg"
+        }
+      ]
+    },
+    {
+      "name": "Anas",
+      "patient_number": "PN105",
+      "registration_date": "2025-09-16 13:40:46",
+      "reports": [
+        {
+          "type": "X-ray Analysis (Visualization)",
+          "date": "2025-09-17 09:38:47",
+          "result": "covid",
+          "confidence": 97.5,
+          "report_path": "reports/PN105_20250917_093847_XrayReport.pdf",
+          "visualization_path": "outputs/bc67a5cf-3a41-4251-95fc-184854e1d9b4_xray_analysis.png",
+          "file_name": "d2efcf6bc1685389c64459f3354ce9_big_gallery.jpeg"
+        },
+        {
+          "type": "X-ray Analysis (Visualization)",
+          "date": "2025-09-17 09:42:31",
+          "result": "covid",
+          "confidence": 99.78,
+          "report_path": "reports/PN105_20250917_094230_XrayReport.pdf",
+          "visualization_path": "outputs/6029c054-a997-46b8-9aeb-82246706ce18_xray_analysis.png",
+          "file_name": "fib.jpeg"
+        },
+        {
+          "type": "X-ray Analysis (Visualization)",
+          "date": "2025-09-17 09:48:07",
+          "result": "covid",
+          "confidence": 99.78,
+          "report_path": "reports/PN105_20250917_094806_XrayReport.pdf",
+          "visualization_path": "outputs/3a8767ca-fea5-4f81-afc3-0c80b83ecee3_xray_analysis.png",
+          "file_name": "fib.jpeg"
+        },
+        {
+          "type": "X-ray Analysis (Visualization)",
+          "date": "2025-09-17 10:04:23",
+          "result": "covid",
+          "confidence": 99.78,
+          "report_path": "reports/PN105_20250917_100423_XrayReport.pdf",
+          "visualization_path": "outputs/2ab74c79-9bd2-4691-b182-a039ec9e8398_xray_analysis.png",
+          "file_name": "fib.jpeg"
+        }
+      ]
+    },
+    {
+      "name": "Muhammad Anas Muqeem",
+      "age": 22,
+      "gender": "Male",
+      "area": "Karachi",
+      "address": "Sheet 23 2/2 Karachi",
+      "patient_number": "PN106",
+      "registration_date": "2025-09-16 15:37:15",
+      "reports": [
+        {
+          "type": "Audio Analysis (Basic)",
+          "date": "2025-09-16 15:38:54",
+          "result": "Abnormal",
+          "confidence": 55.04,
+          "report_path": "reports/PN106_20250916_153854_LungReport.pdf",
+          "file_name": "H005_R4.wav"
+        }
+      ]
+    },
+    {
+      "name": "Muhammad Anas Muqeem",
+      "age": 22,
+      "gender": "Male",
+      "area": "Karachi",
+      "address": "Sheet 23",
+      "patient_number": "PN107",
+      "registration_date": "2025-09-16 15:49:07",
+      "reports": []
+    },
+    {
+      "name": "B",
+      "age": 23,
+      "gender": "Male",
+      "area": "Lahore",
+      "address": "Taj mahal",
+      "patient_number": "PN108",
+      "registration_date": "2025-09-17 11:55:35",
+      "reports": [
+        {
+          "type": "X-ray Analysis (Basic)",
+          "date": "2025-09-17 11:55:55",
+          "result": "covid",
+          "confidence": 97.5,
+          "report_path": "reports/PN108_20250917_115555_XrayReport.pdf",
+          "file_name": "fib.jpeg"
+        },
+        {
+          "type": "Audio Analysis (Attention XAI)",
+          "date": "2025-09-17 11:58:59",
+          "result": "Abnormal",
+          "confidence": 55.04,
+          "report_path": "reports/PN108_20250917_115859_LungReport.pdf",
+          "visualization_path": "outputs/9f52fa8e-567d-495e-826b-7aa306e03815_attention_rollout.png",
+          "file_name": "H005_R4.wav"
+        },
+        {
+          "type": "X-ray Analysis (Basic)",
+          "date": "2025-09-17 13:32:45",
+          "result": "control",
+          "confidence": 58.17,
+          "report_path": "reports/PN108_20250917_133245_XrayReport.pdf",
+          "file_name": "pn1.jpeg"
+        },
+        {
+          "type": "X-ray Analysis (Basic)",
+          "date": "2025-09-17 13:35:21",
+          "result": "control",
+          "confidence": 58.17,
+          "report_path": "reports/PN108_20250917_133520_XrayReport.pdf",
+          "file_name": "pn1.jpeg"
+        }
+      ]
+    }
+  ]
+}
