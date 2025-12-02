@@ -14,99 +14,41 @@ Due to GitHub's 100MB file size limit, the following model files are **NOT** inc
 
 ---
 
-## 📥 Download Options
+## 📥 Download Models
 
-### Option 1: Google Drive (Recommended)
+**Audio Model (final_model_ast (1).pt):**
+- **Download**: [Google Drive Link](https://drive.google.com/file/d/1dKlyhn7TRilJFaD5QkCjBPTNLLCoJkqv/view?usp=sharing)
+- **Size**: ~350MB
+- **Using gdown**:
+  ```bash
+  pip install gdown
+  gdown --id 1dKlyhn7TRilJFaD5QkCjBPTNLLCoJkqv -O "final_model_ast (1).pt"
+  ```
 
-**Audio Model:**
-```bash
-# Download link: [INSERT YOUR GOOGLE DRIVE LINK]
-# Or use gdown:
-pip install gdown
-gdown --id YOUR_FILE_ID -O "final_model_ast (1).pt"
-```
+**X-ray Model (final_model.keras):**
+- **Download**: [Google Drive Link](https://drive.google.com/file/d/1Tvfz5_Aa-VJXJo-XgcTSCGmk9mVcxWGY/view?usp=sharing)
+- **Size**: ~100MB
+- **Using gdown**:
+  ```bash
+  pip install gdown
+  gdown --id 1Tvfz5_Aa-VJXJo-XgcTSCGmk9mVcxWGY -O "final_model.keras"
+  ```
 
-**X-ray Model:**
-```bash
-# Download link: [INSERT YOUR GOOGLE DRIVE LINK]
-# Or use gdown:
-gdown --id YOUR_FILE_ID -O "final_model.keras"
-```
-
-### Option 2: Git LFS (Alternative)
-
-If you prefer using Git LFS to store models in the repository:
-
-```bash
-# Install Git LFS
-git lfs install
-
-# Track model files
-git lfs track "*.pt"
-git lfs track "*.keras"
-
-# Add and commit
-git add .gitattributes
-git add "final_model_ast (1).pt" final_model.keras
-git commit -m "Add model files with Git LFS"
-git push
-```
-
-**Note:** Git LFS has storage limits on free plans.
-
-### Option 3: Hugging Face Hub
-
-Upload models to Hugging Face:
-
-```python
-# Upload script
-from huggingface_hub import HfApi
-
-api = HfApi()
-api.upload_file(
-    path_or_fileobj="final_model_ast (1).pt",
-    path_in_repo="final_model_ast (1).pt",
-    repo_id="your-username/lungscareai-models",
-    repo_type="model",
-)
-```
-
-Download:
-```python
-from huggingface_hub import hf_hub_download
-
-hf_hub_download(
-    repo_id="your-username/lungscareai-models",
-    filename="final_model_ast (1).pt",
-    local_dir="."
-)
-```
-
-### Option 4: Release Assets
-
-Upload as GitHub Release assets:
-
-1. Go to GitHub repository
-2. Click "Releases" > "Create a new release"
-3. Upload model files as assets
-4. Users download from release page
+**After downloading, place both files in the project root directory.**
 
 ---
 
 ## ✅ Verify Downloaded Models
 
-After downloading, verify the files:
+After downloading, verify the files are in the project root:
 
 ```bash
-# Check files exist
+# Windows
+dir "final_model_ast (1).pt" final_model.keras
+
+# Linux/Mac
 ls -lh "final_model_ast (1).pt" final_model.keras
-
-# Expected sizes (approximate):
-# final_model_ast (1).pt: ~350MB
-# final_model.keras: ~100MB
 ```
-
-Place both files in the **project root directory** (same level as README.md).
 
 ---
 
