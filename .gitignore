@@ -76,7 +76,6 @@ frontend/.cache/
 # Temporary files
 *.tmp
 *.temp
-ngrok-v3-stable-linux-amd64.tgz
 
 # Sample files are in examples/ folder (not ignored)
 

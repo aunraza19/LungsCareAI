@@ -114,7 +114,14 @@
 
 ### Running the Application
 
-**Option 1: Using the setup script** (Linux/Mac)
+**Option 1: Using automated scripts**
+
+Windows:
+```bash
+run_webapp_demo.bat
+```
+
+Linux/Mac:
 ```bash
 chmod +x run_webapp_demo.sh
 ./run_webapp_demo.sh
