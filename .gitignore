@@ -78,10 +78,5 @@ frontend/.cache/
 *.temp
 ngrok-v3-stable-linux-amd64.tgz
 
-# Test images and audio (keep samples in docs/)
-# covid00186.jpg
-# fib.jpeg
-# pn1.jpeg
-# xray.jpeg
-# H005_R4.wav
+# Sample files are in examples/ folder (not ignored)
 

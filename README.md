@@ -316,9 +316,9 @@ Navigate to **Patient Registration** and fill in patient details.
 ## 🧪 Testing
 
 ### Sample Data
-Sample medical files are included for testing:
-- **Audio**: `H005_R4.wav`
-- **X-ray**: `covid00186.jpg`, `fib.jpeg`, `pn1.jpeg`, `xray.jpeg`
+Sample medical files are included in the `examples/` folder:
+- **Audio**: `examples/H005_R4.wav`
+- **X-ray**: `examples/covid00186.jpg`, `examples/fib.jpeg`, `examples/pn1.jpeg`, `examples/xray.jpeg`
 
 ### Test Workflow
 1. Register a test patient
