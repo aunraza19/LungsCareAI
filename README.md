@@ -73,10 +73,13 @@
    
    Due to GitHub's file size limitations, download the models separately:
    
-   - **Audio Model** (`final_model_ast (1).pt`): [Download Link]
-   - **X-ray Model** (`final_model.keras`): [Download Link]
+   - **Audio Model** (`final_model_ast (1).pt` - ~350MB)
+   - **X-ray Model** (`final_model.keras` - ~100MB)
    
-   Place them in the project root directory.
+   **Download Instructions:**
+   - See [MODELS.md](MODELS.md) for detailed download options
+   - Upload to Google Drive, Hugging Face, or use Git LFS
+   - Place both model files in the project root directory
 
 3. **Set up environment variables**
    ```bash
@@ -383,10 +386,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📧 Contact
 
-**Project Maintainer**: [Your Name]
-- Email: your.email@example.com
+**Project Maintainer**: [@aunraza19](https://github.com/aunraza19)
 - GitHub: [@aunraza19](https://github.com/aunraza19)
-- LinkedIn: [Your LinkedIn](https://linkedin.com/in/yourprofile)
+- Repository: [LungsCareAI](https://github.com/aunraza19/LungsCareAI)
 
 ---
 
