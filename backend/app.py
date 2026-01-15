@@ -116,6 +116,24 @@ class AnalysisResponse(BaseModel):
     report_path: Optional[str] = None
     visualization_path: Optional[str] = None
 
+# New models for enhanced features
+class SymptomCheckRequest(BaseModel):
+    symptoms: List[str]
+    duration: Optional[str] = None
+    severity: Optional[str] = "moderate"  # mild, moderate, severe
+    patient_number: Optional[str] = None
+
+class SecondOpinionRequest(BaseModel):
+    diagnosis: str
+    confidence: float
+    analysis_type: str  # "audio" or "xray"
+    patient_number: Optional[str] = None
+
+class HealthTipsRequest(BaseModel):
+    category: Optional[str] = "general"  # general, lung_health, post_diagnosis
+    condition: Optional[str] = None
+    patient_number: Optional[str] = None
+
 class ChatMessage(BaseModel):
     id: str
     type: str
@@ -134,6 +152,33 @@ class QuestionRequest(BaseModel):
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+# Load sample data for demo
+@app.post("/api/demo/load-sample-data")
+async def load_sample_data():
+    """Load sample patient data for demo purposes"""
+    try:
+        import shutil
+        sample_file = "sample_patient_records.json"
+        target_file = "patient_records.json"
+
+        if os.path.exists(sample_file):
+            shutil.copy(sample_file, target_file)
+            return {"success": True, "message": "Sample data loaded successfully"}
+        else:
+            return {"success": False, "message": "Sample data file not found"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/demo/clear-data")
+async def clear_demo_data():
+    """Clear all patient data (for demo reset)"""
+    try:
+        with open("patient_records.json", "w") as f:
+            json.dump({"counter": 100, "patients": []}, f, indent=2)
+        return {"success": True, "message": "Data cleared successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Patient Management Endpoints
 @app.post("/api/patients/register", response_model=PatientResponse)
@@ -231,12 +276,17 @@ async def _process_audio_analysis(file: UploadFile, patient_number: str, analysi
             result_json = tool._run(file_path)
             result = json.loads(result_json)
             
-            # Get detailed analysis from RAG
+            # Get detailed analysis for UI (conversational)
             detailed_analysis = rag_agent.process_audio_classification(result_json)
             
-            # Generate report
+            # Generate clinical report text for PDF (formal, non-conversational)
+            clinical_report_text = rag_agent.generate_clinical_report_text(
+                result['label'], result['confidence'], "audio"
+            )
+
+            # Generate report with clinical text
             report_path = report_generator.generate_medical_report(
-                patient_info, result['label'], detailed_analysis, file_path
+                patient_info, result['label'], clinical_report_text, file_path
             )
             
             # Add report to patient record
@@ -262,6 +312,7 @@ async def _process_audio_analysis(file: UploadFile, patient_number: str, analysi
             result_json = tool._run(file_path)
             result = json.loads(result_json)
             
+            # Conversational response for UI
             detailed_analysis = rag_agent.process_audio_classification(
                 json.dumps({
                     "label": result['label'],
@@ -270,8 +321,13 @@ async def _process_audio_analysis(file: UploadFile, patient_number: str, analysi
                 })
             )
             
+            # Clinical report text for PDF
+            clinical_report_text = rag_agent.generate_clinical_report_text(
+                result['label'], result['confidence'], "audio"
+            )
+
             report_path = report_generator.generate_medical_report(
-                patient_info, result['label'], detailed_analysis, file_path, result.get('visualization_saved')
+                patient_info, result['label'], clinical_report_text, file_path, result.get('visualization_saved')
             )
             
             # Add report to patient record
@@ -299,6 +355,7 @@ async def _process_audio_analysis(file: UploadFile, patient_number: str, analysi
             result_json = tool._run(file_path)
             result = json.loads(result_json)
             
+            # Conversational response for UI
             detailed_analysis = rag_agent.process_audio_classification(
                 json.dumps({
                     "label": result['label'],
@@ -307,8 +364,13 @@ async def _process_audio_analysis(file: UploadFile, patient_number: str, analysi
                 })
             )
             
+            # Clinical report text for PDF
+            clinical_report_text = rag_agent.generate_clinical_report_text(
+                result['label'], result['confidence'], "audio"
+            )
+
             report_path = report_generator.generate_medical_report(
-                patient_info, result['label'], detailed_analysis, file_path, result.get('visualization_saved')
+                patient_info, result['label'], clinical_report_text, file_path, result.get('visualization_saved')
             )
             
             # Add report to patient record
@@ -378,12 +440,17 @@ async def _process_xray_analysis(file: UploadFile, patient_number: str, analysis
             result_json = tool._run(file_path)
             result = json.loads(result_json)
             
-            # Get detailed analysis from RAG
+            # Conversational response for UI
             detailed_analysis = rag_agent.process_xray_classification(result_json)
             
-            # Generate report
+            # Clinical report text for PDF (formal, non-conversational)
+            clinical_report_text = rag_agent.generate_clinical_report_text(
+                result['label'], result.get('confidence', 0), "xray"
+            )
+
+            # Generate report with clinical text
             report_path = report_generator.generate_xray_report(
-                patient_info, result['label'], detailed_analysis, file_path
+                patient_info, result['label'], clinical_report_text, file_path
             )
             
             # Add report to patient record
@@ -409,6 +476,7 @@ async def _process_xray_analysis(file: UploadFile, patient_number: str, analysis
             result_json = tool._run(file_path)
             result = json.loads(result_json)
             
+            # Conversational response for UI
             detailed_analysis = rag_agent.process_xray_classification(
                 json.dumps({
                     "label": result['label'],
@@ -417,8 +485,13 @@ async def _process_xray_analysis(file: UploadFile, patient_number: str, analysis
                 })
             )
             
+            # Clinical report text for PDF
+            clinical_report_text = rag_agent.generate_clinical_report_text(
+                result['label'], result['confidence'], "xray"
+            )
+
             report_path = report_generator.generate_xray_report(
-                patient_info, result['label'], detailed_analysis, file_path, result.get('visualization_saved')
+                patient_info, result['label'], clinical_report_text, file_path, result.get('visualization_saved')
             )
             
             # Add report to patient record
@@ -447,6 +520,282 @@ async def _process_xray_analysis(file: UploadFile, patient_number: str, analysis
         # Clean up uploaded file
         if os.path.exists(file_path):
             os.remove(file_path)
+
+# ═══════════════════════════════════════════════════════════
+# UNIQUE FEATURES - Symptom Checker, Second Opinion, Health Tips
+# ═══════════════════════════════════════════════════════════
+
+@app.post("/api/symptom-checker")
+async def check_symptoms(request: SymptomCheckRequest):
+    """AI-powered symptom checker for respiratory conditions"""
+    try:
+        # Build symptom analysis prompt
+        symptoms_str = ", ".join(request.symptoms)
+
+        prompt = f"""You are MedGemma, an expert medical AI assistant specializing in respiratory health.
+
+═══════════════════════════════════════════════════════════
+🩺 SYMPTOM ANALYSIS REQUEST
+═══════════════════════════════════════════════════════════
+Reported Symptoms: {symptoms_str}
+Duration: {request.duration or 'Not specified'}
+Severity: {request.severity}
+
+═══════════════════════════════════════════════════════════
+📝 YOUR TASK
+═══════════════════════════════════════════════════════════
+Analyze these respiratory symptoms and provide:
+
+⚠️ **Urgency Assessment**
+Rate the urgency: 🟢 Low | 🟡 Moderate | 🔴 High | 🚨 Emergency
+Explain why.
+
+🔍 **Possible Conditions**
+List 3-5 respiratory conditions that could cause these symptoms.
+Format: **Condition** - Brief explanation of why it fits
+
+📋 **Recommended Actions**
+1. Immediate steps to take
+2. When to see a doctor
+3. Tests that might be helpful
+
+💡 **Self-Care Tips**
+Provide 3-4 safe home care suggestions while awaiting medical consultation.
+
+🚨 **Warning Signs**
+List symptoms that would require IMMEDIATE emergency care.
+
+Be thorough but not alarmist. Focus on respiratory conditions.
+
+⚕️ End with medical disclaimer.
+
+RESPONSE:"""
+
+        response = rag_agent.llm.invoke(prompt)
+        if hasattr(response, 'content'):
+            response_text = response.content
+        else:
+            response_text = str(response)
+
+        # Determine urgency level from response
+        urgency = "moderate"
+        if "🔴" in response_text or "High" in response_text:
+            urgency = "high"
+        elif "🚨" in response_text or "Emergency" in response_text:
+            urgency = "emergency"
+        elif "🟢" in response_text or "Low" in response_text:
+            urgency = "low"
+
+        return {
+            "success": True,
+            "analysis": response_text,
+            "urgency": urgency,
+            "symptoms_analyzed": request.symptoms
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/second-opinion")
+async def get_second_opinion(request: SecondOpinionRequest):
+    """Generate AI second opinion with differential diagnoses"""
+    try:
+        analysis_type_label = "lung audio" if request.analysis_type == "audio" else "chest X-ray"
+
+        prompt = f"""You are MedGemma providing a clinical second opinion analysis.
+
+═══════════════════════════════════════════════════════════
+📊 PRIMARY DIAGNOSIS
+═══════════════════════════════════════════════════════════
+Analysis Type: {analysis_type_label}
+Primary Diagnosis: {request.diagnosis}
+AI Confidence: {request.confidence}%
+
+═══════════════════════════════════════════════════════════
+📝 YOUR TASK
+═══════════════════════════════════════════════════════════
+Provide a thoughtful second opinion considering:
+
+🧠 **Clinical Consideration**
+Provide a 2-3 sentence alternative perspective or confirmation of the diagnosis.
+Consider factors that might affect accuracy.
+
+🔄 **Differential Diagnoses**
+List 3 alternative conditions to consider:
+1. **Condition** - One-line clinical rationale
+2. **Condition** - One-line clinical rationale  
+3. **Condition** - One-line clinical rationale
+
+📊 **Confidence Assessment**
+- Is the {request.confidence}% confidence appropriate?
+- What factors support or challenge this confidence?
+
+🔬 **Suggested Confirmatory Tests**
+List 2-3 tests that could confirm or rule out the diagnosis.
+
+💡 **Clinical Pearls**
+Provide 1-2 key clinical insights about this diagnosis.
+
+Keep response concise and clinically relevant.
+
+RESPONSE:"""
+
+        response = rag_agent.llm.invoke(prompt)
+        if hasattr(response, 'content'):
+            response_text = response.content
+        else:
+            response_text = str(response)
+
+        # Parse key elements for structured response
+        return {
+            "success": True,
+            "primary_diagnosis": request.diagnosis,
+            "confidence": request.confidence,
+            "second_opinion": response_text,
+            "analysis_type": request.analysis_type
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/health-tips")
+async def get_health_tips(request: HealthTipsRequest):
+    """Get personalized health tips based on category or condition"""
+    try:
+        # Customize prompt based on request
+        if request.condition:
+            topic = f"managing {request.condition}"
+        elif request.category == "lung_health":
+            topic = "maintaining optimal lung health"
+        elif request.category == "post_diagnosis":
+            topic = "recovery and health maintenance after respiratory diagnosis"
+        else:
+            topic = "general respiratory wellness"
+
+        prompt = f"""You are MedGemma, providing expert health advice.
+
+═══════════════════════════════════════════════════════════
+💡 HEALTH TIPS REQUEST
+═══════════════════════════════════════════════════════════
+Topic: {topic}
+Category: {request.category}
+{f"Specific Condition: {request.condition}" if request.condition else ""}
+
+═══════════════════════════════════════════════════════════
+📝 YOUR TASK
+═══════════════════════════════════════════════════════════
+Provide practical, evidence-based health tips:
+
+🫁 **Daily Habits for Lung Health**
+List 5 daily practices with brief explanations.
+
+🏃 **Exercise Recommendations**
+- Breathing exercises (describe 2-3)
+- Physical activity suggestions
+- Precautions if any
+
+🍎 **Nutrition Tips**
+Foods and nutrients that support respiratory health.
+
+🏠 **Environmental Factors**
+- Indoor air quality tips
+- Allergen reduction
+- Humidity management
+
+⚠️ **Things to Avoid**
+List 4-5 things harmful to respiratory health.
+
+📅 **Monitoring Your Health**
+- Symptoms to track
+- When to seek medical attention
+- Recommended checkup frequency
+
+Make tips practical and actionable. Use emojis for visual appeal.
+
+⚕️ End with: "These are general wellness tips. Consult your doctor for personalized advice."
+
+RESPONSE:"""
+
+        response = rag_agent.llm.invoke(prompt)
+        if hasattr(response, 'content'):
+            response_text = response.content
+        else:
+            response_text = str(response)
+
+        return {
+            "success": True,
+            "category": request.category,
+            "condition": request.condition,
+            "tips": response_text
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/quick-info/{topic}")
+async def get_quick_info(topic: str):
+    """Get quick medical information on common topics"""
+
+    # Predefined quick info topics
+    quick_topics = {
+        "breathing-exercises": "breathing exercises for lung health",
+        "pneumonia": "pneumonia symptoms prevention treatment",
+        "covid": "COVID-19 symptoms prevention recovery",
+        "asthma": "asthma management triggers treatment",
+        "copd": "COPD chronic obstructive pulmonary disease",
+        "tuberculosis": "tuberculosis TB symptoms treatment",
+        "smoking-cessation": "quit smoking lung health recovery",
+        "air-quality": "indoor air quality respiratory health"
+    }
+
+    if topic.lower() not in quick_topics:
+        return {
+            "success": False,
+            "error": "Topic not found",
+            "available_topics": list(quick_topics.keys())
+        }
+
+    try:
+        query = quick_topics[topic.lower()]
+
+        # Get relevant docs from RAG
+        docs = rag_agent.retriever.invoke(query)
+        context = "\n".join([doc.page_content for doc in docs[:3]])
+
+        prompt = f"""You are MedGemma providing quick medical information.
+
+Topic: {query}
+
+Context from medical knowledge base:
+{context}
+
+Provide a concise, informative response about {query}:
+- Use bullet points for key facts
+- Include 3-4 most important points
+- Keep it under 200 words
+- Add one practical tip
+- End with a brief disclaimer
+
+RESPONSE:"""
+
+        response = rag_agent.llm.invoke(prompt)
+        if hasattr(response, 'content'):
+            response_text = response.content
+        else:
+            response_text = str(response)
+
+        return {
+            "success": True,
+            "topic": topic,
+            "info": response_text
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # General Q&A Endpoint
 @app.post("/api/chat")

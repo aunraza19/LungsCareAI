@@ -10,14 +10,16 @@ import {
   CardContent,
   Avatar,
   Divider,
-  CircularProgress,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   Chip,
   Alert,
-  IconButton
+  IconButton,
+  Fade,
+  alpha,
+  Grid
 } from '@mui/material'
 import {
   Chat as ChatIcon,
@@ -25,11 +27,17 @@ import {
   Person as PersonIcon,
   SmartToy as BotIcon,
   Clear as ClearIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  Air as LungIcon,
+  Psychology as AiIcon
 } from '@mui/icons-material'
 import { toast } from 'react-toastify'
 import { useMutation, useQuery } from 'react-query'
 import ReactMarkdown from 'react-markdown'
+
+// Import components
+import VoiceInput from '../components/chat/VoiceInput'
+import LungLoader from '../components/common/LungLoader'
 
 interface Message {
   id: string
@@ -62,20 +70,20 @@ const ChatBot: React.FC = () => {
     if (chatHistory[chatKey]) {
       return chatHistory[chatKey]
     }
-    
+
     const isUrdu = language === 'urdu'
-    
+
     return [
       {
         id: '1',
         type: 'bot',
-        content: patientNumber 
-          ? (isUrdu 
-              ? `السلام علیکم! میں MedGemma ہوں، آپ کا AI طبی معاون۔ میرے پاس مریض ${patientNumber} کی طبی رپورٹس اور تجزیے تک رسائی ہے۔ میں ان کی پھیپھڑوں کی صحت کے بارے میں سوالوں کا جواب دے سکتا ہوں، تجزیے کے نتائج کی وضاحت کر سکتا ہوں، اور ان کی رپورٹس کی بنیاد پر طبی بصیرت فراہم کر سکتا ہوں۔ آج میں آپ کی کیسے مدد کر سکتا ہوں؟`
-              : `Hello! I'm MedGemma, your AI medical assistant. I have access to the medical reports and analysis for patient ${patientNumber}. I can answer questions about their lung health, explain analysis results, and provide medical insights based on their reports. How can I assist you today?`)
-          : (isUrdu 
-              ? 'السلام علیکم! میں MedGemma ہوں، آپ کا AI طبی معاون۔ براہ کرم کسی مریض کو منتخب کریں تاکہ ان کی طبی رپورٹس تک رسائی حاصل کر سکیں اور ذاتی بصیرت حاصل کر سکیں، یا پھیپھڑوں کی صحت اور بیماریوں کے بارے میں عمومی سوالات پوچھیں۔ آج میں آپ کی کیسے مدد کر سکتا ہوں؟'
-              : 'Hello! I\'m MedGemma, your AI medical assistant. Please select a patient to access their medical reports and get personalized insights, or ask general questions about lung health and diseases. How can I assist you today?'),
+        content: patientNumber
+          ? (isUrdu
+              ? `السلام علیکم! میں MedGemma ہوں، آپ کا AI طبی معاون۔ میرے پاس مریض ${patientNumber} کی طبی رپورٹس تک رسائی ہے۔ آج میں آپ کی کیسے مدد کر سکتا ہوں؟`
+              : `Hello! I'm **MedGemma**, your AI medical assistant. I have access to patient **${patientNumber}**'s medical reports. How can I assist you today?`)
+          : (isUrdu
+              ? 'السلام علیکم! میں MedGemma ہوں۔ براہ کرم کسی مریض کو منتخب کریں یا پھیپھڑوں کی صحت کے بارے میں سوالات پوچھیں۔'
+              : 'Hello! I\'m **MedGemma**, your AI medical assistant. Select a patient to access their reports, or ask general questions about lung health.'),
         timestamp: new Date()
       }
     ]
@@ -95,28 +103,23 @@ const ChatBot: React.FC = () => {
 
   const chatMutation = useMutation(
     async (question: string) => {
-      const payload: any = { 
+      const payload: any = {
         question,
         language: selectedLanguage,
-        chat_history: messages.slice(-10) // Send last 10 messages for context
+        chat_history: messages.slice(-10)
       }
-      
+
       if (selectedPatient) {
         payload.patient_number = selectedPatient
       }
 
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to get response')
-      }
-
+      if (!response.ok) throw new Error('Failed to get response')
       return response.json()
     },
     {
@@ -129,12 +132,8 @@ const ChatBot: React.FC = () => {
         }
         setMessages(prev => {
           const newMessages = [...prev, botMessage]
-          // Update chat history with language-specific key
           const chatKey = `${selectedPatient || 'general'}_${selectedLanguage}`
-          setChatHistory(prevHistory => ({
-            ...prevHistory,
-            [chatKey]: newMessages
-          }))
+          setChatHistory(prevHistory => ({ ...prevHistory, [chatKey]: newMessages }))
           return newMessages
         })
       },
@@ -149,39 +148,30 @@ const ChatBot: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Update messages when patient or language selection changes
+  // Update messages when patient or language changes
   useEffect(() => {
-    const newMessages = getInitialMessages(selectedPatient, selectedLanguage)
-    setMessages(newMessages)
+    setMessages(getInitialMessages(selectedPatient, selectedLanguage))
   }, [selectedPatient, selectedLanguage])
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault()
     if (!currentMessage.trim()) return
 
-    // Add user message
     const userMessage: Message = {
       id: Date.now().toString() + '_user',
       type: 'user',
       content: currentMessage.trim(),
       timestamp: new Date()
     }
-    
+
     setMessages(prev => {
       const newMessages = [...prev, userMessage]
-      // Update chat history with language-specific key
       const chatKey = `${selectedPatient || 'general'}_${selectedLanguage}`
-      setChatHistory(prevHistory => ({
-        ...prevHistory,
-        [chatKey]: newMessages
-      }))
+      setChatHistory(prevHistory => ({ ...prevHistory, [chatKey]: newMessages }))
       return newMessages
     })
-    
-    // Send to API
+
     chatMutation.mutate(currentMessage.trim())
-    
-    // Clear input
     setCurrentMessage('')
   }
 
@@ -189,10 +179,7 @@ const ChatBot: React.FC = () => {
     const newMessages = getInitialMessages(selectedPatient, selectedLanguage)
     setMessages(newMessages)
     const chatKey = `${selectedPatient || 'general'}_${selectedLanguage}`
-    setChatHistory(prev => ({
-      ...prev,
-      [chatKey]: newMessages
-    }))
+    setChatHistory(prev => ({ ...prev, [chatKey]: newMessages }))
   }
 
   const getSelectedPatientInfo = (): Patient | undefined => {
@@ -204,234 +191,358 @@ const ChatBot: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg">
-      <Paper elevation={3} sx={{ height: '75vh', display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        <Box sx={{ p: 3, bgcolor: 'primary.main', color: 'white', borderRadius: '4px 4px 0 0' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <ChatIcon sx={{ fontSize: 32 }} />
-              <Box>
-                <Typography variant="h5" fontWeight="600">
-                  AI Medical Assistant
-                </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  {selectedLanguage === 'urdu' 
-                    ? 'مریض کی رپورٹس کے ساتھ AI سے بات چیت کریں'
-                    : 'Chat with AI using patient reports context'
-                  }
-                </Typography>
-              </Box>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <IconButton 
-                onClick={handleClearChat} 
-                sx={{ color: 'white' }}
-                title="Clear Chat"
-              >
-                <ClearIcon />
-              </IconButton>
-            </Box>
-          </Box>
-          
-          {/* Patient and Language Selection */}
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-            <FormControl size="small" sx={{ minWidth: 200, bgcolor: 'white', borderRadius: 1 }}>
-              <InputLabel>Select Patient</InputLabel>
-              <Select
-                value={selectedPatient}
-                label="Select Patient"
-                onChange={(e) => setSelectedPatient(e.target.value)}
-                disabled={patientsLoading}
-              >
-                <MenuItem value="">
-                  <em>General Chat (No Patient)</em>
-                </MenuItem>
-                {patientsData?.patients?.map((patient: Patient) => (
-                  <MenuItem key={patient.patient_number} value={patient.patient_number}>
-                    {patient.name} ({patient.patient_number})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+    <Container maxWidth="lg" sx={{ py: 2 }}>
+      <Fade in timeout={500}>
+        <Grid container spacing={2} sx={{ height: 'calc(100vh - 200px)', minHeight: 500 }}>
 
-            <FormControl size="small" sx={{ minWidth: 140, bgcolor: 'white', borderRadius: 1 }}>
-              <InputLabel>Language</InputLabel>
-              <Select
-                value={selectedLanguage}
-                label="Language"
-                onChange={(e) => setSelectedLanguage(e.target.value)}
-              >
-                <MenuItem value="english">🇺🇸 English</MenuItem>
-                <MenuItem value="urdu">🇵🇰 اردو</MenuItem>
-              </Select>
-            </FormControl>
-            
-            {selectedPatient && getSelectedPatientInfo() && (
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {(getSelectedPatientInfo()?.reports?.length || 0) > 0 && (
-                  <Chip
-                    label={`${getSelectedPatientInfo()?.reports?.length || 0} Reports Available`}
-                    size="small"
-                    sx={{ bgcolor: 'success.light', color: 'white' }}
-                  />
-                )}
-                <Chip
-                  label={`${getSelectedPatientInfo()?.name} - ${getSelectedPatientInfo()?.age}y ${getSelectedPatientInfo()?.gender}`}
-                  size="small"
-                  sx={{ bgcolor: 'info.light', color: 'white' }}
-                />
-              </Box>
-            )}
-          </Box>
-        </Box>
-
-        <Divider />
-
-        {/* Messages Area */}
-        <Box sx={{ flexGrow: 1, p: 2, overflowY: 'auto', maxHeight: '55vh' }}>
-          {/* Context Alert */}
-          {selectedPatient && getSelectedPatientInfo() && (
-            <Alert 
-              severity="info" 
-              sx={{ mb: 2 }}
-              action={
-                <IconButton 
-                  size="small" 
-                  onClick={() => window.location.reload()}
-                  title="Refresh Patient Data"
-                >
-                  <RefreshIcon fontSize="small" />
-                </IconButton>
-              }
+          {/* Sidebar - Patient Selection */}
+          <Grid item xs={12} md={3}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                height: '100%',
+                borderRadius: 3,
+                border: 1,
+                borderColor: 'divider',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+              }}
             >
-              <Typography variant="body2">
-                <strong>Patient Context Active:</strong> {getSelectedPatientInfo()?.name} ({selectedPatient})
-                {(getSelectedPatientInfo()?.reports?.length || 0) > 0 && 
-                  ` - ${getSelectedPatientInfo()?.reports?.length} medical reports loaded for AI context`
-                }
-              </Typography>
-            </Alert>
-          )}
-          
-          {messages.map((message) => (
-            <Box key={message.id} sx={{ mb: 2 }}>
+              {/* Header */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{
+                  p: 1,
+                  borderRadius: 2,
+                  bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.15),
+                }}>
+                  <AiIcon sx={{ color: 'secondary.main' }} />
+                </Box>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    MedGemma
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    AI Medical Assistant
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Divider />
+
+              {/* Patient Selection */}
+              <FormControl fullWidth size="small">
+                <InputLabel>Select Patient</InputLabel>
+                <Select
+                  value={selectedPatient}
+                  label="Select Patient"
+                  onChange={(e) => setSelectedPatient(e.target.value)}
+                  disabled={patientsLoading}
+                >
+                  <MenuItem value="">
+                    <em>General Chat</em>
+                  </MenuItem>
+                  {patientsData?.patients?.map((patient: Patient) => (
+                    <MenuItem key={patient.patient_number} value={patient.patient_number}>
+                      {patient.name} ({patient.patient_number})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {/* Language Selection */}
+              <FormControl fullWidth size="small">
+                <InputLabel>Language</InputLabel>
+                <Select
+                  value={selectedLanguage}
+                  label="Language"
+                  onChange={(e) => setSelectedLanguage(e.target.value)}
+                >
+                  <MenuItem value="english">🇺🇸 English</MenuItem>
+                  <MenuItem value="urdu">🇵🇰 اردو</MenuItem>
+                </Select>
+              </FormControl>
+
+              {/* Patient Info Card */}
+              {selectedPatient && getSelectedPatientInfo() && (
+                <Box sx={{
+                  p: 2,
+                  bgcolor: (theme) => alpha(theme.palette.info.main, 0.1),
+                  borderRadius: 2,
+                  border: 1,
+                  borderColor: (theme) => alpha(theme.palette.info.main, 0.3),
+                }}>
+                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                    👤 {getSelectedPatientInfo()?.name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" component="div">
+                    Age: {getSelectedPatientInfo()?.age} • {getSelectedPatientInfo()?.gender}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" component="div">
+                    Area: {getSelectedPatientInfo()?.area}
+                  </Typography>
+                  {(getSelectedPatientInfo()?.reports?.length || 0) > 0 && (
+                    <Chip
+                      label={`${getSelectedPatientInfo()?.reports?.length} Reports`}
+                      size="small"
+                      color="success"
+                      sx={{ mt: 1 }}
+                    />
+                  )}
+                </Box>
+              )}
+
+              {/* Quick Actions */}
+              <Box sx={{ mt: 'auto' }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<ClearIcon />}
+                  onClick={handleClearChat}
+                  size="small"
+                >
+                  Clear Chat
+                </Button>
+              </Box>
+            </Paper>
+          </Grid>
+
+          {/* Main Chat Area */}
+          <Grid item xs={12} md={9}>
+            <Paper
+              elevation={0}
+              sx={{
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: 3,
+                border: 1,
+                borderColor: 'divider',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Chat Header */}
+              <Box sx={{
+                p: 2,
+                background: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? 'linear-gradient(135deg, #1a3a5c 0%, #132f4c 100%)'
+                    : 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+                color: 'white',
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <LungIcon sx={{ fontSize: 28, animation: 'breathe 3s ease-in-out infinite' }} />
+                  <Box>
+                    <Typography variant="h6" fontWeight={600}>
+                      AI Medical Chat
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                      {selectedPatient
+                        ? `Chatting about ${getSelectedPatientInfo()?.name}'s health`
+                        : 'Ask any medical questions'
+                      }
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+
+              {/* Messages Area */}
               <Box
                 sx={{
+                  flex: 1,
+                  p: 2,
+                  overflowY: 'auto',
                   display: 'flex',
-                  justifyContent: message.type === 'user' ? 'flex-end' : 'flex-start',
-                  mb: 1
+                  flexDirection: 'column',
+                  gap: 2,
+                  bgcolor: (theme) =>
+                    theme.palette.mode === 'dark'
+                      ? alpha('#0a1929', 0.5)
+                      : alpha('#f5f7fa', 0.5),
                 }}
               >
-                <Card
-                  sx={{
-                    maxWidth: '80%',
-                    bgcolor: message.type === 'user' ? 'primary.main' : 'grey.100',
-                    color: message.type === 'user' ? 'white' : 'text.primary'
-                  }}
-                >
-                  <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                {messages.map((message) => (
+                  <Box
+                    key={message.id}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: message.type === 'user' ? 'flex-end' : 'flex-start',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        maxWidth: '75%',
+                        display: 'flex',
+                        flexDirection: message.type === 'user' ? 'row-reverse' : 'row',
+                        gap: 1.5,
+                        alignItems: 'flex-start',
+                      }}
+                    >
                       <Avatar
                         sx={{
-                          width: 32,
-                          height: 32,
-                          bgcolor: message.type === 'user' ? 'primary.dark' : 'secondary.main'
+                          width: 36,
+                          height: 36,
+                          bgcolor: message.type === 'user' ? 'primary.main' : 'secondary.main',
+                          flexShrink: 0,
                         }}
                       >
                         {message.type === 'user' ? <PersonIcon /> : <BotIcon />}
                       </Avatar>
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
-                          {message.type === 'user' ? 'You' : 'MedGemma AI'}
+
+                      <Box
+                        sx={{
+                          p: 2,
+                          borderRadius: 3,
+                          bgcolor: message.type === 'user'
+                            ? 'primary.main'
+                            : 'background.paper',
+                          color: message.type === 'user' ? 'white' : 'text.primary',
+                          boxShadow: 1,
+                          border: message.type === 'bot' ? 1 : 0,
+                          borderColor: 'divider',
+                        }}
+                      >
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontWeight: 600,
+                            mb: 0.5,
+                            display: 'block',
+                            opacity: message.type === 'user' ? 0.9 : 1,
+                          }}
+                        >
+                          {message.type === 'user' ? 'You' : '🤖 MedGemma'}
                         </Typography>
+
                         {message.type === 'bot' ? (
-                          <ReactMarkdown className="medical-text">
-                            {message.content}
-                          </ReactMarkdown>
+                          <Box sx={{
+                            '& p': { m: 0, mb: 1 },
+                            '& ul, & ol': { m: 0, pl: 2 },
+                            '& li': { mb: 0.5 },
+                            '& strong': { color: 'secondary.main' },
+                          }}>
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                          </Box>
                         ) : (
-                          <Typography variant="body1">
+                          <Typography variant="body2">
                             {message.content}
                           </Typography>
                         )}
-                        <Typography variant="caption" sx={{ opacity: 0.7, mt: 1, display: 'block' }}>
+
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            opacity: 0.6,
+                            mt: 1,
+                            display: 'block',
+                            textAlign: message.type === 'user' ? 'right' : 'left',
+                          }}
+                        >
                           {formatTime(message.timestamp)}
                         </Typography>
                       </Box>
                     </Box>
-                  </CardContent>
-                </Card>
+                  </Box>
+                ))}
+
+                {/* Loading indicator */}
+                {chatMutation.isLoading && (
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+                    <Box sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1.5,
+                      p: 2,
+                      bgcolor: 'background.paper',
+                      borderRadius: 3,
+                      boxShadow: 1,
+                    }}>
+                      <Avatar sx={{ width: 36, height: 36, bgcolor: 'secondary.main' }}>
+                        <BotIcon />
+                      </Avatar>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <LungIcon
+                          sx={{
+                            color: 'secondary.main',
+                            animation: 'breathe 2s ease-in-out infinite',
+                          }}
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          MedGemma is thinking...
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                )}
+
+                <div ref={messagesEndRef} />
               </Box>
-            </Box>
-          ))}
-          
-          {chatMutation.isLoading && (
-            <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
-              <Card sx={{ bgcolor: 'grey.100' }}>
-                <CardContent sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
-                    <BotIcon />
-                  </Avatar>
-                  <CircularProgress size={20} />
-                  <Typography variant="body2" color="text.secondary">
-                    MedGemma is analyzing {selectedPatient ? 'patient reports and ' : ''}your question...
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Box>
-          )}
-          <div ref={messagesEndRef} />
-        </Box>
 
-        <Divider />
+              {/* Input Area */}
+              <Box sx={{
+                p: 2,
+                borderTop: 1,
+                borderColor: 'divider',
+                bgcolor: 'background.paper',
+              }}>
+                <form onSubmit={handleSendMessage}>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+                    <TextField
+                      fullWidth
+                      placeholder={
+                        selectedLanguage === 'urdu'
+                          ? "اپنا سوال یہاں لکھیں..."
+                          : "Type your medical question here..."
+                      }
+                      value={currentMessage}
+                      onChange={(e) => setCurrentMessage(e.target.value)}
+                      disabled={chatMutation.isLoading}
+                      multiline
+                      maxRows={3}
+                      size="small"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 3,
+                        }
+                      }}
+                    />
 
-        {/* Input Area */}
-        <Box sx={{ p: 2 }}>
-          <form onSubmit={handleSendMessage}>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <TextField
-                fullWidth
-                placeholder={
-                  selectedLanguage === 'urdu'
-                    ? (selectedPatient 
-                        ? `${getSelectedPatientInfo()?.name} کی رپورٹس، علامات، یا عمومی طبی سوالوں کے بارے میں پوچھیں...`
-                        : "پھیپھڑوں کی صحت، بیماریوں، علامات کے بارے میں پوچھیں، یا رپورٹ پر مبنی بصیرت کے لیے کوئی مریض منتخب کریں...")
-                    : (selectedPatient 
-                        ? `Ask about ${getSelectedPatientInfo()?.name}'s reports, symptoms, or general medical questions...`
-                        : "Ask about lung health, diseases, symptoms, or select a patient for report-based insights...")
-                }
-                value={currentMessage}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentMessage(e.target.value)}
-                disabled={chatMutation.isLoading}
-                multiline
-                maxRows={3}
-                sx={{ flexGrow: 1 }}
-              />
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={!currentMessage.trim() || chatMutation.isLoading}
-                sx={{ minWidth: 60 }}
-              >
-                <SendIcon />
-              </Button>
-            </Box>
-          </form>
-          
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-            {selectedLanguage === 'urdu'
-              ? (selectedPatient 
-                  ? `🔒 محفوظ مریض کا سیاق فعال۔ طبی رپورٹس ذاتی بصیرت فراہم کرنے کے لیے استعمال ہوتی ہیں۔ طبی مشورے کے لیے ہمیشہ صحت کی دیکھ بھال کے پیشہ ور افراد سے مشورہ کریں۔`
-                  : 'عمومی طبی معلومات کا طریقہ۔ ذاتی بصیرت کے لیے اوپر سے کوئی مریض منتخب کریں۔ طبی مشورے کے لیے ہمیشہ صحت کی دیکھ بھال کے پیشہ ور افراد سے مشورہ کریں۔')
-              : (selectedPatient 
-                  ? `🔒 Secure patient context active. Medical reports are used to provide personalized insights.`
-                  : 'General medical information mode. Select a patient above to access their reports for personalized insights.'
-              )} {selectedLanguage === 'english' && 'Always consult healthcare professionals for medical advice.'}
-          </Typography>
-        </Box>
-      </Paper>
+                    <VoiceInput
+                      onTranscript={(text) => setCurrentMessage(prev => prev ? `${prev} ${text}` : text)}
+                      language={selectedLanguage}
+                      disabled={chatMutation.isLoading}
+                    />
+
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      disabled={!currentMessage.trim() || chatMutation.isLoading}
+                      sx={{
+                        minWidth: 50,
+                        height: 50,
+                        borderRadius: 3,
+                      }}
+                    >
+                      <SendIcon />
+                    </Button>
+                  </Box>
+                </form>
+
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
+                  💡 {selectedLanguage === 'urdu'
+                    ? 'آواز سے ٹائپ کرنے کے لیے مائیک بٹن دبائیں'
+                    : 'Use mic button for voice input • Always consult healthcare professionals'
+                  }
+                </Typography>
+              </Box>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Fade>
     </Container>
   )
 }
 
 export default ChatBot
+

@@ -1,10 +1,17 @@
+/* 🌟 LungsCareAI Global Styles */
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease;
 }
 
 code {
@@ -12,79 +19,246 @@ code {
     monospace;
 }
 
+/* 🫁 Breathing Lungs Animation */
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(0.95);
+    opacity: 0.7;
+    filter: drop-shadow(0 0 8px rgba(77, 182, 172, 0.3));
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+    filter: drop-shadow(0 0 15px rgba(77, 182, 172, 0.8));
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    transform: scale(0.9);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.lung-loader {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+/* 🎴 Card Hover Effects */
 .analysis-card {
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
 }
 
 .analysis-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
 }
 
+/* 📤 Upload Zone */
 .upload-zone {
-  border: 2px dashed #1976d2;
-  border-radius: 8px;
+  border: 2px dashed rgba(77, 182, 172, 0.5);
+  border-radius: 16px;
   padding: 40px;
   text-align: center;
-  background-color: #f8f9fa;
+  background: rgba(77, 182, 172, 0.05);
   transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.upload-zone:hover {
+  border-color: #4db6ac;
+  background: rgba(77, 182, 172, 0.1);
+  transform: scale(1.01);
 }
 
 .upload-zone.active {
-  border-color: #42a5f5;
-  background-color: #e3f2fd;
+  border-color: #4db6ac;
+  background: rgba(77, 182, 172, 0.15);
+  box-shadow: 0 0 20px rgba(77, 182, 172, 0.3);
 }
 
+/* 📊 Progress Bar */
 .progress-bar {
   height: 6px;
   border-radius: 3px;
-  background: linear-gradient(90deg, #1976d2 0%, #42a5f5 100%);
-  animation: pulse 2s ease-in-out infinite alternate;
+  background: linear-gradient(90deg, #4db6ac 0%, #66b2ff 50%, #4db6ac 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
 }
 
-@keyframes pulse {
-  0% { opacity: 1; }
-  100% { opacity: 0.7; }
-}
-
+/* 🎯 Result Card */
 .result-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 12px;
-  padding: 20px;
+  background: linear-gradient(135deg, rgba(77, 182, 172, 0.2) 0%, rgba(102, 178, 255, 0.2) 100%);
+  border: 1px solid rgba(77, 182, 172, 0.3);
+  border-radius: 16px;
+  padding: 24px;
   margin: 16px 0;
+  animation: slideUp 0.5s ease-out;
 }
 
+/* 💚💛 Confidence Colors */
 .confidence-normal {
   color: #4caf50;
   font-weight: bold;
+  text-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
 }
 
 .confidence-abnormal {
-  color: #f44336;
+  color: #ff9800;
   font-weight: bold;
+  text-shadow: 0 0 10px rgba(255, 152, 0, 0.3);
 }
 
+/* 📝 Medical Text */
 .medical-text {
-  line-height: 1.6;
-  color: #333;
+  line-height: 1.8;
 }
 
 .medical-text ul {
-  padding-left: 20px;
+  padding-left: 24px;
 }
 
 .medical-text li {
   margin-bottom: 8px;
 }
 
+.medical-text strong {
+  color: #4db6ac;
+}
+
+/* 🎨 Logo Animation */
 .logo-container {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.pulse-animation {
-  animation: pulse 2s ease-in-out infinite alternate;
+.logo-container img {
+  transition: transform 0.3s ease;
+}
+
+.logo-container:hover img {
+  transform: scale(1.05);
+}
+
+/* ✨ Page Transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.page-exit {
+  opacity: 1;
+}
+
+.page-exit-active {
+  opacity: 0;
+  transition: opacity 300ms;
+}
+
+/* 🌊 Glassmorphism Utilities */
+.glass {
+  background: rgba(19, 47, 76, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+}
+
+/* 🔘 Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4db6ac;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #26a69a;
+}
+
+/* 🎭 Selection Color */
+::selection {
+  background: rgba(77, 182, 172, 0.3);
+  color: inherit;
+}
+
+/* 📱 Mobile Responsive */
+@media (max-width: 768px) {
+  .upload-zone {
+    padding: 24px;
+  }
+
+  .result-card {
+    padding: 16px;
+  }
+}
+
+/* 🌙 Toast Customization for Dark Mode */
+.Toastify__toast-container--top-right {
+  top: 80px !important;
+}
+
+.Toastify__toast {
+  border-radius: 12px !important;
+  backdrop-filter: blur(10px);
+}
+
+.Toastify__toast--dark {
+  background: rgba(19, 47, 76, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.Toastify__progress-bar {
+  background: linear-gradient(90deg, #4db6ac 0%, #66b2ff 100%) !important;
 }

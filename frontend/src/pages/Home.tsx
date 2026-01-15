@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from 'react-query'
+import { useQuery, useQueryClient } from 'react-query'
 import {
   Container,
   Typography,
@@ -17,7 +17,8 @@ import {
   StepLabel,
   StepContent,
   Alert,
-  Avatar
+  Avatar,
+  Fade
 } from '@mui/material'
 import {
   Hearing as AudioIcon,
@@ -30,19 +31,27 @@ import {
   Speed as SpeedIcon,
   VerifiedUser as VerifiedIcon,
   ArrowForward as ArrowIcon,
-  Favorite as HeartIcon
+  Favorite as HeartIcon,
+  Air as LungIcon
 } from '@mui/icons-material'
+import DemoControls from '../components/common/DemoControls'
 
 const Home: React.FC = () => {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [currentStep, setCurrentStep] = useState(0)
   // Fetch patients to check if any are registered
-  const { data: patientsData } = useQuery('patients', async () => {
+  const { data: patientsData, refetch } = useQuery('patients', async () => {
     const response = await fetch('/api/patients')
     return response.json()
   })
 
   const hasPatients = patientsData?.patients && patientsData.patients.length > 0
+
+  const handleDataChange = () => {
+    refetch()
+    queryClient.invalidateQueries('patients')
+  }
 
   const steps = [
     {
@@ -83,97 +92,152 @@ const Home: React.FC = () => {
     {
       title: 'Chest X-ray Analysis',
       description: 'Deep learning classification for multiple lung conditions',
-      icon: <XrayIcon sx={{ fontSize: 50, color: '#dc004e' }} />,
+      icon: <XrayIcon sx={{ fontSize: 50, color: '#4db6ac' }} />,
       path: '/xray-analysis',
-      color: '#dc004e',
+      color: '#4db6ac',
       features: ['Multi-class detection', 'Visual heatmaps', 'Confidence scoring']
     },
     {
       title: 'AI Medical Assistant',
       description: 'Intelligent chat assistant for medical consultations',
-      icon: <ChatIcon sx={{ fontSize: 50, color: '#ed6c02' }} />,
+      icon: <ChatIcon sx={{ fontSize: 50, color: '#66b2ff' }} />,
       path: '/chat',
-      color: '#ed6c02',
-      features: ['RAG-powered responses', '24/7 availability', 'Medical knowledge base']
+      color: '#66b2ff',
+      features: ['RAG-powered responses', 'Voice input', 'Medical knowledge base']
     }
   ]
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Demo Controls - for testing/demo purposes */}
+      <DemoControls onDataLoaded={handleDataChange} />
+
+      <Fade in timeout={800}>
+        <div>
       {/* Hero Section */}
       <Paper 
         elevation={6}
         sx={{ 
           p: 6, 
           mb: 6, 
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #0a1929 0%, #132f4c 50%, #1a3a5c 100%)',
           color: 'white',
           textAlign: 'center',
-          borderRadius: 3
+          borderRadius: 4,
+          border: '1px solid rgba(77, 182, 172, 0.3)',
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'radial-gradient(circle at 50% 0%, rgba(77, 182, 172, 0.15) 0%, transparent 50%)',
+            pointerEvents: 'none',
+          }
         }}
       >
+          {/* Breathing Lung Icon */}
           <Box 
             sx={{ 
-              width: 120, 
-              height: 120, 
+              width: 140, 
+              height: 140, 
               mx: 'auto',
               mb: 3,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              bgcolor: 'white',
+              bgcolor: 'rgba(77, 182, 172, 0.15)',
               borderRadius: '50%',
-              p: 2
+              border: '2px solid rgba(77, 182, 172, 0.3)',
+              position: 'relative',
             }}
           >
-            <img 
-              src="/assets/lungs-care-ai-logo.png" 
-              alt="LungsCare AI Logo" 
-              style={{ 
-                width: '100%', 
-                height: '100%',
-                objectFit: 'contain'
+            <LungIcon 
+              sx={{ 
+                fontSize: 80, 
+                color: '#4db6ac',
+                animation: 'breathe 3s ease-in-out infinite',
+                filter: 'drop-shadow(0 0 15px rgba(77, 182, 172, 0.5))',
               }} 
             />
           </Box>
           
-          <Typography variant="h2" component="h1" gutterBottom fontWeight="bold">
-            LUNGS CAREAI
+          <Typography 
+            variant="h2" 
+            component="h1" 
+            gutterBottom 
+            sx={{
+              fontWeight: 800,
+              background: 'linear-gradient(135deg, #ffffff 0%, #4db6ac 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            LUNGSCAREAI
           </Typography>
-          <Typography variant="h5" sx={{ mb: 4, opacity: 0.9 }}>
+          <Typography variant="h5" sx={{ mb: 4, opacity: 0.9, fontWeight: 400 }}>
             Advanced AI-Powered Lung Analysis for Healthcare Excellence
           </Typography>
           
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap', mb: 4 }}>
             <Chip 
-              icon={<AiIcon />}
+              icon={<AiIcon sx={{ color: '#4db6ac !important' }} />}
               label="AI-Powered Analysis" 
-              sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontSize: '1rem', py: 2 }} 
+              sx={{ 
+                bgcolor: 'rgba(77, 182, 172, 0.2)', 
+                color: 'white', 
+                fontSize: '1rem', 
+                py: 2,
+                border: '1px solid rgba(77, 182, 172, 0.4)',
+              }} 
             />
             <Chip 
-              icon={<SpeedIcon />}
+              icon={<SpeedIcon sx={{ color: '#66b2ff !important' }} />}
               label="Real-time Results" 
-              sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontSize: '1rem', py: 2 }} 
+              sx={{ 
+                bgcolor: 'rgba(102, 178, 255, 0.2)', 
+                color: 'white', 
+                fontSize: '1rem', 
+                py: 2,
+                border: '1px solid rgba(102, 178, 255, 0.4)',
+              }} 
             />
             <Chip 
-              icon={<SecurityIcon />}
+              icon={<SecurityIcon sx={{ color: '#81c784 !important' }} />}
               label="Medical Grade Security" 
-              sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontSize: '1rem', py: 2 }} 
+              sx={{ 
+                bgcolor: 'rgba(129, 199, 132, 0.2)', 
+                color: 'white', 
+                fontSize: '1rem', 
+                py: 2,
+                border: '1px solid rgba(129, 199, 132, 0.4)',
+              }} 
             />
           </Box>
         </Paper>
 
       {/* Getting Started Workflow */}
-      <Paper elevation={3} sx={{ p: 4, mb: 6, borderRadius: 2 }}>
-          <Typography variant="h4" component="h2" gutterBottom textAlign="center" fontWeight="600">
-            {hasPatients ? 'Welcome Back!' : 'Get Started in 3 Simple Steps'}
+      <Paper elevation={3} sx={{ p: 4, mb: 6, borderRadius: 3 }}>
+          <Typography variant="h4" component="h2" gutterBottom textAlign="center" fontWeight="700">
+            {hasPatients ? '👋 Welcome Back!' : '🚀 Get Started in 3 Simple Steps'}
           </Typography>
           
           {hasPatients ? (
             <Box textAlign="center" sx={{ py: 3 }}>
-              <Alert severity="success" sx={{ mb: 3, fontSize: '1.1rem' }}>
+              <Alert 
+                severity="success" 
+                sx={{ 
+                  mb: 3, 
+                  fontSize: '1.1rem',
+                  borderRadius: 2,
+                }}
+              >
                 <Typography variant="h6">
-                  You have {patientsData.patients.length} patient(s) registered. Ready to perform AI analysis!
+                  ✅ You have {patientsData.patients.length} patient(s) registered. Ready to perform AI analysis!
                 </Typography>
               </Alert>
               
@@ -327,11 +391,13 @@ const Home: React.FC = () => {
           sx={{ 
             p: 4, 
             textAlign: 'center',
-            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-            borderRadius: 2
+            background: 'linear-gradient(135deg, rgba(77, 182, 172, 0.1) 0%, rgba(102, 178, 255, 0.1) 100%)',
+            borderRadius: 3,
+            border: '1px solid rgba(77, 182, 172, 0.2)',
           }}
         >
-          <Typography variant="h5" gutterBottom fontWeight="600">
+          <LungIcon sx={{ fontSize: 48, color: 'secondary.main', mb: 2 }} />
+          <Typography variant="h5" gutterBottom fontWeight="700">
             Ready to Start Your AI-Powered Medical Analysis?
           </Typography>
           <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary' }}>
@@ -343,8 +409,8 @@ const Home: React.FC = () => {
             startIcon={<RegisterIcon />}
             onClick={() => navigate('/register')}
             sx={{ 
-              bgcolor: '#2e7d32',
-              '&:hover': { bgcolor: '#1b5e20' },
+              bgcolor: 'secondary.main',
+              '&:hover': { bgcolor: 'secondary.dark' },
               py: 1.5,
               px: 4,
               fontSize: '1.1rem'
@@ -354,6 +420,8 @@ const Home: React.FC = () => {
           </Button>
         </Paper>
       )}
+      </div>
+      </Fade>
     </Container>
   )
 }

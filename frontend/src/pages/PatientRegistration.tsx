@@ -7,7 +7,6 @@ import {
   Button,
   Box,
   Alert,
-  CircularProgress,
   Card,
   CardContent,
   Divider,
@@ -15,11 +14,18 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Grid
+  Grid,
+  Fade,
+  alpha
 } from '@mui/material'
-import { PersonAdd as PersonAddIcon } from '@mui/icons-material'
+import {
+  PersonAdd as PersonAddIcon,
+  Air as LungIcon,
+  CheckCircle as SuccessIcon
+} from '@mui/icons-material'
 import { toast } from 'react-toastify'
 import { useMutation } from 'react-query'
+import LungLoader from '../components/common/LungLoader'
 
 interface PatientData {
   name: string
@@ -56,7 +62,7 @@ const PatientRegistration: React.FC = () => {
     },
     {
       onSuccess: (data: PatientData) => {
-        toast.success(`Patient ${data.name} registered successfully!`)
+        toast.success(`✅ Patient ${data.name} registered successfully!`)
         setPatientName('')
         setAge('')
         setGender('')
@@ -84,21 +90,35 @@ const PatientRegistration: React.FC = () => {
 
   return (
     <Container maxWidth="md">
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <PersonAddIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-          <Typography variant="h4" component="h1" gutterBottom fontWeight="600">
-            Patient Registration
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Register a new patient to start medical analysis
-          </Typography>
-        </Box>
+      <Fade in timeout={500}>
+        <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <LungIcon
+              sx={{
+                fontSize: 56,
+                color: 'secondary.main',
+                mb: 2,
+                animation: 'breathe 3s ease-in-out infinite',
+              }}
+            />
+            <Typography variant="h4" component="h1" gutterBottom fontWeight="700">
+              Patient Registration
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Register a new patient to start AI-powered medical analysis
+            </Typography>
+          </Box>
 
-        <Divider sx={{ mb: 4 }} />
+          <Divider sx={{ mb: 4 }} />
 
-        <form onSubmit={handleSubmit}>
-          <Grid container spacing={3}>
+          {registerPatientMutation.isLoading && (
+            <Box sx={{ mb: 3 }}>
+              <LungLoader size="small" message="Registering patient..." />
+            </Box>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            <Grid container spacing={3}>
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -186,13 +206,11 @@ const PatientRegistration: React.FC = () => {
                 !address.trim() || 
                 registerPatientMutation.isLoading
               }
-              startIcon={
-                registerPatientMutation.isLoading ? (
-                  <CircularProgress size={20} />
-                ) : (
-                  <PersonAddIcon />
-                )
-              }
+              startIcon={!registerPatientMutation.isLoading && <PersonAddIcon />}
+              sx={{
+                py: 1.5,
+                fontSize: '1.1rem',
+              }}
             >
               {registerPatientMutation.isLoading ? 'Registering...' : 'Register Patient'}
             </Button>
@@ -200,57 +218,78 @@ const PatientRegistration: React.FC = () => {
         </form>
 
         {registerPatientMutation.data && (
-          <Card sx={{ bgcolor: 'success.50', border: 1, borderColor: 'success.200' }}>
-            <CardContent>
-              <Typography variant="h6" color="success.main" gutterBottom>
-                Registration Successful!
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Patient Name:</strong> {registerPatientMutation.data.name}
+          <Fade in timeout={500}>
+            <Card sx={{
+              background: (theme) =>
+                theme.palette.mode === 'dark'
+                  ? 'linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(77, 182, 172, 0.15) 100%)'
+                  : alpha('#4caf50', 0.1),
+              border: 2,
+              borderColor: 'success.main',
+              borderRadius: 3,
+            }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                  <SuccessIcon sx={{ color: 'success.main', fontSize: 28 }} />
+                  <Typography variant="h6" color="success.main" fontWeight={700}>
+                    Registration Successful!
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Age:</strong> {registerPatientMutation.data.age}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Gender:</strong> {registerPatientMutation.data.gender}
-                  </Typography>
+                </Box>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Patient Name:</strong> {registerPatientMutation.data.name}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Age:</strong> {registerPatientMutation.data.age}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Gender:</strong> {registerPatientMutation.data.gender}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Area:</strong> {registerPatientMutation.data.area}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Patient Number:</strong> <span style={{ color: '#4db6ac', fontWeight: 600 }}>{registerPatientMutation.data.patient_number}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Registration Date:</strong> {registerPatientMutation.data.registration_date}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="body2">
+                      <strong>Address:</strong> {registerPatientMutation.data.address}
+                    </Typography>
+                  </Grid>
                 </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Area:</strong> {registerPatientMutation.data.area}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Patient Number:</strong> {registerPatientMutation.data.patient_number}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Registration Date:</strong> {registerPatientMutation.data.registration_date}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography variant="body2">
-                    <strong>Address:</strong> {registerPatientMutation.data.address}
-                  </Typography>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Fade>
         )}
 
         {registerPatientMutation.isError && (
-          <Alert severity="error" sx={{ mt: 2 }}>
+          <Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>
             Registration failed. Please try again.
           </Alert>
         )}
 
-        <Box sx={{ mt: 4, p: 2, bgcolor: 'info.50', borderRadius: 1 }}>
+        <Box sx={{
+          mt: 4,
+          p: 2,
+          bgcolor: (theme) => alpha(theme.palette.info.main, 0.1),
+          borderRadius: 2,
+          border: 1,
+          borderColor: (theme) => alpha(theme.palette.info.main, 0.3),
+        }}>
           <Typography variant="body2" color="info.main">
-            <strong>Note:</strong> Each patient will receive a unique patient number (PN###) 
+            💡 <strong>Note:</strong> Each patient will receive a unique patient number (PN###)
             that will be used for all medical analyses and reports.
           </Typography>
         </Box>
       </Paper>
+      </Fade>
     </Container>
   )
 }

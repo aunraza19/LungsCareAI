@@ -108,9 +108,18 @@
    ```
 
 6. **Start Qdrant Vector Database**
-   ```bash
-   docker run -p 6333:6333 -v $(pwd)/qdrant_storage:/qdrant/storage qdrant/qdrant
+   
+   **Windows:**
+   ```powershell
+   .\start_qdrant.ps1
    ```
+   
+   **Linux/Mac:**
+   ```bash
+   docker run -d -p 6333:6333 -v $(pwd)/qdrant_storage:/qdrant/storage qdrant/qdrant
+   ```
+   
+   📖 **For detailed Qdrant setup instructions, see [QDRANT_SETUP.md](QDRANT_SETUP.md)**
 
 ### Running the Application
 

@@ -172,10 +172,10 @@ class MedicalReportGenerator:
         )
 
     def _create_enhanced_classification_summary(self, classification_result, detailed_analysis, analysis_type="Audio"):
-        """Generate a dynamic 3-4 line summary using LLM based on the detailed analysis"""
+        """Generate a professional clinical summary for medical reports"""
         try:
-            # Create a prompt to summarize the detailed analysis
-            summary_prompt = f"""You are a medical AI assistant. Based on the detailed analysis below, create a concise 3-4 line summary for the Final Classification section of a medical report.
+            # Create a prompt for clinical report-style summary
+            summary_prompt = f"""You are a medical report writer. Generate a professional clinical summary for a formal medical report.
 
 CLASSIFICATION RESULT: {classification_result}
 ANALYSIS TYPE: {analysis_type}
@@ -184,44 +184,47 @@ DETAILED ANALYSIS:
 {detailed_analysis}
 
 INSTRUCTIONS:
-- Summarize the key findings from the detailed analysis above in exactly 3-4 lines
-- Focus on the most important clinical implications and recommendations
-- Keep it professional and medical in tone
-- Do not repeat the classification result (it will be shown separately)
-- Make it actionable and informative for healthcare providers
-- Do not use bullet points or formatting, just plain sentences
+Write a formal 3-4 sentence clinical summary suitable for a medical report. Requirements:
+- Use formal medical terminology and third-person perspective
+- State the primary finding and its clinical significance
+- Include relevant clinical recommendations
+- Do NOT use conversational language, emojis, or bullet points
+- Do NOT address the patient directly (no "you" or "your")
+- Write as if for a physician reviewing the report
+- Keep it concise and professional
 
-SUMMARY:"""
+Example format:
+"The [analysis type] examination revealed [finding]. This finding is consistent with [clinical interpretation]. Clinical correlation with [relevant tests/symptoms] is recommended. Follow-up evaluation is advised [timeframe/conditions]."
 
-            # Get summary from LLM using existing instance (set by MedicalRAGAgent)
+CLINICAL SUMMARY:"""
+
+            # Get summary from LLM
             if hasattr(self, 'llm') and self.llm:
                 summary = self.llm.invoke(summary_prompt)
-                # Handle AIMessage object from newer versions of langchain-google-genai
                 if hasattr(summary, 'content'):
                     summary = summary.content
                 else:
                     summary = str(summary)
             else:
-                # Fallback if LLM not available
-                raise Exception("LLM not available for summary generation")
-            
-            # Clean up the summary (remove any unwanted formatting)
+                raise Exception("LLM not available")
+
+            # Clean up - remove any conversational elements
             summary = summary.strip()
-            
-            # Ensure it's not too long (limit to reasonable length)
-            if len(summary) > 500:
-                # If too long, truncate and add ellipsis
-                summary = summary[:497] + "..."
-            
+            summary = summary.replace("I ", "").replace("you ", "the patient ")
+            summary = summary.replace("You ", "The patient ").replace("your ", "the patient's ")
+
+            if len(summary) > 600:
+                summary = summary[:597] + "..."
+
             return summary
             
         except Exception as e:
-            # Fallback to a simple dynamic summary if LLM fails
-            analysis_prefix = "audio" if analysis_type == "Audio" else "X-ray"
-            return (f"The {analysis_prefix} analysis resulted in classification as {classification_result}. "
-                   f"This finding requires professional medical interpretation for accurate clinical significance. "
-                   f"Please consult with healthcare providers for detailed evaluation and appropriate management.")
-    
+            # Professional fallback
+            analysis_prefix = "audio auscultation" if analysis_type == "Audio" else "chest radiograph"
+            return (f"The {analysis_prefix} analysis demonstrated findings classified as {classification_result}. "
+                   f"Clinical correlation with patient symptoms and history is recommended. "
+                   f"Further evaluation by a qualified healthcare provider is advised for definitive diagnosis and management.")
+
     def generate_medical_report(self, patient_info, classification_result, detailed_analysis, audio_file_path, visualization_path=None):
         """Generate a professional medical report PDF with detailed analysis"""
         # Create reports directory
@@ -406,6 +409,8 @@ SUMMARY:"""
             # Format section headers
             elif line.startswith('**') and line.endswith('**'):
                 header = line.replace('**', '')
+                # Remove emojis from headers
+                header = self._remove_emojis(header)
                 formatted_lines.append(f"<br/><b>{header}</b><br/>")
             
             # Format regular bullet points
@@ -415,12 +420,66 @@ SUMMARY:"""
             
             # Handle other text
             else:
-                # Clean up any remaining markdown
+                # Clean up any remaining markdown and emojis
                 clean_line = line.replace('**', '').replace('*', '')
+                clean_line = self._remove_emojis(clean_line)
+                # Remove conversational phrases
+                clean_line = self._make_clinical(clean_line)
                 if clean_line.strip():
                     formatted_lines.append(clean_line)
         
         return '<br/>'.join(formatted_lines)
+
+    def _remove_emojis(self, text):
+        """Remove emojis from text for professional reports"""
+        import re
+        # Remove common emoji patterns
+        emoji_pattern = re.compile("["
+            u"\U0001F600-\U0001F64F"  # emoticons
+            u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+            u"\U0001F680-\U0001F6FF"  # transport & map symbols
+            u"\U0001F1E0-\U0001F1FF"  # flags
+            u"\U00002702-\U000027B0"
+            u"\U000024C2-\U0001F251"
+            u"\U0001f926-\U0001f937"
+            u"\U0001F1F2-\U0001F1F4"
+            u"\U0001F620-\U0001F629"
+            u"\U0001F4A0-\U0001F4FF"
+            u"\u200d"
+            u"\u2640-\u2642"
+            u"\u2600-\u2B55"
+            u"\u23cf"
+            u"\u23e9"
+            u"\u231a"
+            u"\ufe0f"
+            u"\u3030"
+            "]+", flags=re.UNICODE)
+        return emoji_pattern.sub('', text).strip()
+
+    def _make_clinical(self, text):
+        """Convert conversational text to clinical language"""
+        # Replace conversational phrases with clinical alternatives
+        replacements = {
+            "you should": "it is recommended to",
+            "You should": "It is recommended to",
+            "you need": "the patient requires",
+            "You need": "The patient requires",
+            "your doctor": "the treating physician",
+            "Your doctor": "The treating physician",
+            "your lungs": "the patient's lungs",
+            "Your lungs": "The patient's lungs",
+            "you have": "the patient has",
+            "You have": "The patient has",
+            "you are": "the patient is",
+            "You are": "The patient is",
+            "Great news!": "Findings:",
+            "Good news!": "Findings:",
+            "I recommend": "It is recommended",
+            "I suggest": "It is suggested",
+        }
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+        return text
 
     def generate_xray_report(self, patient_info, classification_result, detailed_analysis, xray_file_path, visualization_path=None):
         """Generate a professional X-ray analysis PDF report with detailed analysis"""
@@ -646,7 +705,7 @@ class MedicalRAGAgent:
         # Initialize Gemini 2.0 Flash model
         from langchain_google_genai import ChatGoogleGenerativeAI
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             google_api_key=api_key,  # Explicitly pass the API key
             temperature=0.1,
             max_tokens=2048,
@@ -706,107 +765,220 @@ class MedicalRAGAgent:
         print(f"✅ New collection '{collection_name}' created with HNSW optimization and {len(split_docs)} documents!")
 
     def setup_prompts(self):
-        self.NORMAL_PROMPT = """You are MedGemma, a healthcare-focused assistant.
+        """Setup enhanced prompts for better medical responses"""
 
-AUDIO CLASSIFICATION RESULT:
-Label: {label}
+        # MedGemma Persona - consistent identity across all interactions
+        self.PERSONA = """🏥 IDENTITY: MedGemma - Advanced Medical AI Assistant by LungsCareAI
+💡 SPECIALTY: Pulmonology, Respiratory Medicine, General Healthcare
+⚠️ BOUNDARIES: Educational support only - always recommend professional consultation"""
+
+        self.NORMAL_PROMPT = """You are MedGemma, an expert AI medical assistant for lung health analysis.
+
+{persona}
+
+═══════════════════════════════════════════════════════════
+🎧 AUDIO ANALYSIS RESULT
+═══════════════════════════════════════════════════════════
+Classification: {label}
 Confidence: {confidence}%
 {xai_info}
 
-CONTEXT (from knowledge base):
+═══════════════════════════════════════════════════════════
+📚 MEDICAL KNOWLEDGE
+═══════════════════════════════════════════════════════════
 {context}
 
-TASK: The lung audio is classified as NORMAL. Provide lung-health tips and practical precautions.
-- Be clear, concise, and actionable
-- Use short bullet points
-- Add a single-sentence disclaimer at the end
-- Do not echo the prompt or context
-- Do not use code fences or triple backticks in your answer
+═══════════════════════════════════════════════════════════
+📝 YOUR TASK
+═══════════════════════════════════════════════════════════
+The lung sounds are classified as **NORMAL** ✅
 
-Answer:"""
+Provide a helpful response including:
 
-        self.ABNORMAL_PROMPT = """You are MedGemma, a healthcare-focused assistant.
+🎉 **Great News!**
+- What normal lung sounds indicate
+- Reassurance about the positive finding
 
-AUDIO CLASSIFICATION RESULT:
-Label: {label}
+🫁 **Lung Health Tips**
+Provide 5 actionable recommendations:
+• Breathing exercises for lung capacity
+• Environmental factors to optimize
+• Lifestyle habits for respiratory health
+• Warning signs to monitor
+• Recommended follow-up timeline
+
+📅 **Next Steps**
+- When to schedule next checkup
+- Symptoms requiring earlier consultation
+
+Keep tone positive and informative. Use emojis for visual appeal.
+
+⚕️ End with: "**Disclaimer:** This is AI-generated health information. Always consult healthcare professionals for medical advice."
+
+YOUR RESPONSE:"""
+
+        self.ABNORMAL_PROMPT = """You are MedGemma, an expert AI medical assistant for lung health analysis.
+
+{persona}
+
+═══════════════════════════════════════════════════════════
+🎧 AUDIO ANALYSIS RESULT
+═══════════════════════════════════════════════════════════
+Classification: {label}
 Confidence: {confidence}%
 {xai_info}
 
-CONTEXT (from knowledge base):
+═══════════════════════════════════════════════════════════
+📚 MEDICAL KNOWLEDGE
+═══════════════════════════════════════════════════════════
 {context}
 
-TASK: The lung audio is classified as ABNORMAL. Provide differential diagnoses of possible lung diseases with one-line rationale each, plus general precautions.
-- Be clear, concise, and actionable
-- Use short bullet points for differential diagnoses
-- Include brief rationale for each condition
-- Add general precautions and lung health tips
-- Add a single-sentence disclaimer at the end
-- Do not echo the prompt or context
-- Do not use code fences or triple backticks in your answer
+═══════════════════════════════════════════════════════════
+📝 YOUR TASK
+═══════════════════════════════════════════════════════════
+The lung sounds are classified as **ABNORMAL** ⚠️
 
-Answer:"""
+Provide a comprehensive clinical response:
 
-        self.XRAY_PROMPT = """You are MedGemma, a healthcare-focused assistant.
+🔍 **Finding Summary**
+- What abnormal lung sounds may indicate
+- Confidence level interpretation
 
-X-RAY CLASSIFICATION RESULT:
-Disease/Condition: {label}
+🩺 **Differential Diagnoses** (List 4-5 possibilities)
+Format each as: **Condition** - Clinical rationale
+
+⚠️ **Urgency Assessment**
+- 🔴 High Priority conditions
+- 🟡 Moderate Priority conditions  
+- 🟢 Lower Priority conditions
+
+🏥 **Recommended Actions**
+1. Immediate steps to take
+2. Tests that may be needed
+3. Specialists to consult
+
+🫁 **Precautions**
+- Activity modifications
+- Environmental considerations
+- Emergency warning signs
+
+Be thorough but not alarmist. Balance accuracy with reassurance.
+
+⚕️ End with: "**Disclaimer:** This is AI-generated health information. Always consult healthcare professionals for medical advice."
+
+YOUR RESPONSE:"""
+
+        self.XRAY_PROMPT = """You are MedGemma, an expert AI medical assistant for chest X-ray analysis.
+
+{persona}
+
+═══════════════════════════════════════════════════════════
+🩻 X-RAY ANALYSIS RESULT
+═══════════════════════════════════════════════════════════
+Detected Condition: {label}
 Confidence: {confidence}%
 
-CONTEXT (from knowledge base):
+═══════════════════════════════════════════════════════════
+📚 MEDICAL KNOWLEDGE
+═══════════════════════════════════════════════════════════
 {context}
 
-TASK: The chest X-ray shows {label}. Provide comprehensive information about this condition.
+═══════════════════════════════════════════════════════════
+📝 YOUR TASK
+═══════════════════════════════════════════════════════════
+Provide comprehensive information about **{label}**:
 
-**What are the symptoms of {label}?**
-- List key symptoms and signs patients typically experience
-- Include both early and advanced symptoms when relevant
+📖 **Condition Overview**
+- What is {label}?
+- How common is it?
+- Who is typically affected?
 
-**How can you prevent {label}?**
-- Provide specific prevention strategies
-- Include lifestyle modifications and risk factor management
-- Mention screening recommendations when applicable
+🔎 **Key Symptoms**
+- Early symptoms
+- Progressive symptoms
+- Warning signs requiring immediate care
 
-**Additional Information:**
-- Brief explanation of the condition
-- When to seek medical attention
-- General health recommendations
+⚠️ **Risk Factors**
+- Modifiable factors
+- Non-modifiable factors
+- Environmental factors
 
-INSTRUCTIONS:
-- Be clear, short,concise, and evidence-based
-- Use bullet points for easy reading
-- Focus on practical, actionable information
-- Include appropriate medical disclaimer
-- Do not echo the prompt or context
-- Do not use code fences or triple backticks in your answer
+🛡️ **Prevention Strategies**
+- Primary prevention
+- Lifestyle modifications
+- Screening recommendations
 
-Answer:"""
+💊 **Treatment Overview** (General)
+- Standard approaches
+- What to expect
+- Recovery expectations
 
-        self.QUESTION_PROMPT = """You are MedGemma, a highly experienced medical AI assistant specialized in providing comprehensive healthcare information and guidance.
+📋 **Questions for Your Doctor**
+Suggest 3-4 important questions to ask healthcare providers.
 
-QUESTION: {question}
+🚨 **When to Seek Immediate Care**
+List emergency symptoms.
 
+Use clear headings and bullet points. Be informative yet reassuring.
 
+⚕️ End with: "**Disclaimer:** This is AI-generated health information. Always consult healthcare professionals for medical advice."
 
-CRITICAL DOMAIN RESTRICTION:
-1. First, analyze if the question is DIRECTLY about medicine, health, diseases, symptoms, treatments, medical procedures, or healthcare.
-2. (IMPORTANT)If the question is about ANY non-medical topic, you MUST STRICTLY respond with ONLY this exact text: "I'm sorry, I can only assist with medical-related questions."
+YOUR RESPONSE:"""
 
-MEDICAL RESPONSE GUIDELINES (for medical questions only):
-- IF the QUESTION do not need detailed answer, provide a brief, accurate response.
-- Provide concise and complete with medical recommendations, with relevant medical information
-- Use the retrieved context to enhance your medical knowledge
-- Structure your response with clear headings and bullet points for readability]
-- Consider patient demographics when relevant (age, gender, etc.)
-- Reference medical specialties that should be consulted only when
-- Always end with a medical disclaimer
+        self.QUESTION_PROMPT = """You are MedGemma, an expert AI medical assistant from LungsCareAI.
 
-MEDICAL DISCLAIMER (always include for medical responses):
-**Important Medical Disclaimer:** This information is for educational purposes only and should not replace professional medical advice. Always consult with qualified healthcare providers for proper diagnosis, treatment, and medical decisions. In case of medical emergencies, contact emergency services immediately.
+{persona}
 
-
-CONTEXT (retrieved from medical knowledge base):
+═══════════════════════════════════════════════════════════
+📋 CONTEXT
+═══════════════════════════════════════════════════════════
 {context}
-ANSWER:"""
+
+═══════════════════════════════════════════════════════════
+❓ USER QUESTION
+═══════════════════════════════════════════════════════════
+Language: {language}
+Question: {question}
+
+═══════════════════════════════════════════════════════════
+📝 RESPONSE GUIDELINES
+═══════════════════════════════════════════════════════════
+
+🚫 **NON-MEDICAL FILTER** (CRITICAL):
+If the question is NOT about health, medicine, symptoms, diseases, treatments, or wellness, respond ONLY with:
+"I'm MedGemma, your medical AI assistant 🏥. I specialize in health and medical questions only. Please ask me about lung health, symptoms, medical conditions, or wellness advice!"
+
+✅ **FOR MEDICAL QUESTIONS:**
+
+**Symptom Questions:**
+- Acknowledge symptoms mentioned
+- List possible causes (common → rare)
+- Indicate urgency: 🟢 Low | 🟡 Moderate | 🔴 High
+- Recommend next steps
+
+**Disease/Condition Questions:**
+- Clear, accurate information
+- Symptoms, causes, risk factors
+- Prevention strategies
+- General treatment approaches
+
+**Wellness Questions:**
+- Evidence-based tips
+- Focus on lung/respiratory health
+- Practical, actionable advice
+
+**Response Format:**
+- Use emojis for visual sections 📋 🩺 💡 ⚠️
+- Bullet points for lists
+- **Bold** key information
+- Short paragraphs (2-3 sentences)
+- Medical terms with simple explanations
+
+⚕️ **ALWAYS END WITH:**
+"**Medical Disclaimer:** This information is for educational purposes only. Always consult qualified healthcare professionals for diagnosis and treatment."
+
+═══════════════════════════════════════════════════════════
+YOUR RESPONSE:"""
 
     def get_relevant_context(self, query_type="general"):
         """Get relevant context based on query type - optimized for speed while keeping quality"""
@@ -824,15 +996,69 @@ ANSWER:"""
         else:
             return ""
         
-        # Optimized context retrieval - parallel processing could be added here
+        # Optimized context retrieval with error handling
         all_context = []
-        for query in queries:
-            docs = self.retriever.invoke(query)  # Updated method
-            for doc in docs[:2]:  # Keep top 2 docs per query for quality
-                all_context.append(doc.page_content)
-        
+        try:
+            for query in queries:
+                docs = self.retriever.invoke(query)
+                for doc in docs[:2]:  # Keep top 2 docs per query for quality
+                    all_context.append(doc.page_content)
+        except Exception as e:
+            print(f"Warning: RAG context retrieval failed: {e}")
+            return ""  # Return empty context if retrieval fails
+
         # Keep full context but optimize formatting
         return "\n\n".join(all_context[:6])  # Slightly more context for quality
+
+    def generate_clinical_report_text(self, classification_result: str, confidence: float, analysis_type: str = "audio") -> str:
+        """Generate professional clinical report text (not conversational)"""
+
+        analysis_label = "Lung Audio Auscultation" if analysis_type == "audio" else "Chest Radiograph"
+
+        prompt = f"""You are a medical report writer generating text for a formal clinical report.
+
+ANALYSIS TYPE: {analysis_label}
+CLASSIFICATION RESULT: {classification_result}
+CONFIDENCE LEVEL: {confidence}%
+
+Generate a professional clinical analysis report. Requirements:
+
+1. CLINICAL FINDINGS:
+Write 2-3 sentences describing the analysis findings in formal medical language.
+
+2. CLINICAL SIGNIFICANCE:
+Write 2-3 sentences about what this finding means clinically.
+
+3. DIFFERENTIAL CONSIDERATIONS:
+List 3-4 conditions to consider, each with a brief clinical rationale.
+
+4. RECOMMENDATIONS:
+List 3-4 recommended next steps (tests, consultations, monitoring).
+
+CRITICAL FORMATTING RULES:
+- Use formal third-person medical language (NOT "you" or "your")
+- NO emojis or informal language
+- NO conversational phrases like "Great news" or "I recommend"
+- Write as if for a medical professional reviewing the report
+- Use proper medical terminology
+- Each section should be clearly labeled
+
+CLINICAL REPORT:"""
+
+        try:
+            response = self.llm.invoke(prompt)
+            if hasattr(response, 'content'):
+                text = response.content
+            else:
+                text = str(response)
+
+            # Clean up any remaining conversational elements
+            text = self.report_generator._remove_emojis(text) if hasattr(self.report_generator, '_remove_emojis') else text
+            text = self.report_generator._make_clinical(text) if hasattr(self.report_generator, '_make_clinical') else text
+
+            return text
+        except Exception as e:
+            return f"Classification: {classification_result} (Confidence: {confidence}%). Clinical correlation recommended."
 
     def process_audio_classification(self, audio_result: str) -> str:
         """Process audio classification result and provide appropriate response"""
@@ -853,11 +1079,12 @@ ANSWER:"""
                 
             # Add visualization info if available
             if "visualization_saved" in result:
-                xai_info += f"\n\n📊 Visualization saved: {result.get('visualization_saved')}"
-            
+                xai_info += f"\nVisualization saved: {result.get('visualization_saved')}"
+
             if label == "normal":
                 context = self.get_relevant_context("normal")
                 prompt = self.NORMAL_PROMPT.format(
+                    persona=self.PERSONA,
                     label=result.get("label"),
                     confidence=confidence,
                     xai_info=xai_info,
@@ -866,6 +1093,7 @@ ANSWER:"""
             elif label == "abnormal":
                 context = self.get_relevant_context("abnormal")
                 prompt = self.ABNORMAL_PROMPT.format(
+                    persona=self.PERSONA,
                     label=result.get("label"),
                     confidence=confidence,
                     xai_info=xai_info,
@@ -907,13 +1135,14 @@ ANSWER:"""
             # Add visualization info if available
             viz_info = ""
             if "visualization_saved" in result:
-                viz_info = f"\n\n📊 X-ray visualization saved: {result.get('visualization_saved')}"
-            
+                viz_info = f"\n📊 X-ray visualization saved: {result.get('visualization_saved')}"
+
             # Get relevant context about the disease/condition
             context = self.get_relevant_context(f"{label} disease symptoms prevention treatment")
             
             # Generate comprehensive response using the X-ray specific prompt
             prompt = self.XRAY_PROMPT.format(
+                persona=self.PERSONA,
                 label=label,
                 confidence=confidence,
                 context=context
@@ -942,12 +1171,18 @@ ANSWER:"""
 
     def answer_general_question(self, question: str) -> str:
         """Answer general medical questions using RAG"""
-        docs = self.retriever.invoke(question)  # Updated method
-        context = "\n\n".join([doc.page_content for doc in docs[:3]])
-        
+        try:
+            docs = self.retriever.invoke(question)
+            context = "\n\n".join([doc.page_content for doc in docs[:3]])
+        except Exception as e:
+            print(f"Warning: RAG retrieval failed: {e}")
+            context = ""  # Continue without RAG context
+
         prompt = self.QUESTION_PROMPT.format(
+            persona=self.PERSONA,
             question=question,
-            context=context
+            context=context if context else "No additional medical context available.",
+            language="english"
         )
         
         response = self.llm.invoke(prompt)
@@ -957,26 +1192,50 @@ ANSWER:"""
 
     def answer_question_with_context(self, question: str, language: str = "english", patient_info: dict = None, 
                                    patient_reports_context: str = "", chat_context: str = "") -> str:
-        """Answer questions with patient context and chat history"""
-        # Get relevant medical knowledge from RAG
-        docs = self.retriever.invoke(question)
-        medical_context = "\n\n".join([doc.page_content for doc in docs[:3]])
-        
-        # Build comprehensive context
-        full_context = f"Medical Knowledge:\n{medical_context}"
-        
+        """Answer questions with patient context and chat history - Enhanced version"""
+        # Get relevant medical knowledge from RAG with error handling
+        medical_context = ""
+        try:
+            docs = self.retriever.invoke(question)
+            medical_context = "\n\n".join([doc.page_content for doc in docs[:4]])
+        except Exception as e:
+            print(f"Warning: RAG retrieval failed: {e}")
+            medical_context = ""  # Continue without RAG context
+
+        # Build comprehensive context with clear sections
+        context_parts = []
+
+        # Add medical knowledge
+        if medical_context:
+            context_parts.append(f"📚 **Medical Knowledge Base:**\n{medical_context}")
+
+        # Add patient info if available
+        if patient_info:
+            patient_section = f"""👤 **Patient Profile:**
+• Name: {patient_info.get('name', 'Unknown')}
+• Age: {patient_info.get('age', 'N/A')} years
+• Gender: {patient_info.get('gender', 'N/A')}
+• Area: {patient_info.get('area', 'N/A')}"""
+            context_parts.append(patient_section)
+
+        # Add patient reports context
         if patient_reports_context:
-            full_context += f"\n\n{patient_reports_context}"
-        
+            context_parts.append(f"📋 **Patient Medical History:**\n{patient_reports_context}")
+
+        # Add chat history context
         if chat_context:
-            full_context += f"\n\n{chat_context}"
-        
-        # Use your QUESTION_PROMPT with the full context
+            context_parts.append(f"💬 **Recent Conversation:**\n{chat_context}")
+
+        full_context = "\n\n".join(context_parts) if context_parts else "No additional context available."
+
+        # Use enhanced prompt with persona
         prompt = self.QUESTION_PROMPT.format(
+            persona=self.PERSONA,
             context=full_context,
             question=question,
             language=language
         )
+
         response = self.llm.invoke(prompt)
         # Handle AIMessage object from newer versions of langchain-google-genai
         if hasattr(response, 'content'):
