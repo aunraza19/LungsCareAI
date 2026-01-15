@@ -1,109 +1,50 @@
 import React from 'react'
-import { Box, Typography } from '@mui/material'
-import { Air as LungIcon } from '@mui/icons-material'
+import { Box, Stack } from '@mui/material'
 
 interface LungLoaderProps {
   size?: 'small' | 'medium' | 'large'
+  // message prop is intentionally ignored now
   message?: string
-  showMessage?: boolean
 }
 
-const sizeMap = {
-  small: { icon: 40, fontSize: '0.875rem' },
-  medium: { icon: 64, fontSize: '1rem' },
-  large: { icon: 96, fontSize: '1.125rem' },
-}
-
-const LungLoader: React.FC<LungLoaderProps> = ({
-  size = 'medium',
-  message = 'Analyzing lung data...',
-  showMessage = true
-}) => {
-  const { icon: iconSize, fontSize } = sizeMap[size]
+const LungLoader: React.FC<LungLoaderProps> = ({ size = 'medium' }) => {
+  // Dimensions - Increased for visibility
+  // Small: 80px, Medium: 220px, Large: 320px
+  const dimension = size === 'small' ? 80 : size === 'medium' ? 220 : 320
 
   return (
-    <Box
+    <Stack
+      alignItems="center"
+      justifyContent="center"
       sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 2,
-        py: 4,
+        width: '100%',
+        height: '100%', // Ensure it centers vertically in parent container
+        minHeight: dimension + 40 // Minimum height to avoid collapse
       }}
     >
-      <Box
-        sx={{
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        {/* Outer glow ring */}
-        <Box
-          sx={{
-            position: 'absolute',
-            width: iconSize * 1.5,
-            height: iconSize * 1.5,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(77, 182, 172, 0.3) 0%, transparent 70%)',
-            animation: 'pulseGlow 3s ease-in-out infinite',
-            '@keyframes pulseGlow': {
-              '0%, 100%': {
-                transform: 'scale(0.9)',
-                opacity: 0.5,
-              },
-              '50%': {
-                transform: 'scale(1.1)',
-                opacity: 1,
-              },
-            },
-          }}
-        />
-
-        {/* Main lung icon with breathing animation */}
-        <LungIcon
-          sx={{
-            fontSize: iconSize,
-            color: '#4db6ac',
-            animation: 'breathe 3s ease-in-out infinite',
-            filter: 'drop-shadow(0 0 8px rgba(77, 182, 172, 0.5))',
-            '@keyframes breathe': {
-              '0%, 100%': {
-                transform: 'scale(0.95)',
-                opacity: 0.7,
-                filter: 'drop-shadow(0 0 8px rgba(77, 182, 172, 0.3))',
-              },
-              '50%': {
-                transform: 'scale(1.05)',
-                opacity: 1,
-                filter: 'drop-shadow(0 0 15px rgba(77, 182, 172, 0.8))',
-              },
-            },
+      {/* 🌀 Revolving Logo Centered */}
+      <Box sx={{
+        width: dimension,
+        height: dimension,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        perspective: '1000px'
+      }}>
+        <img
+          src="/assets/lungs-care-ai-logo.png"
+          alt="Processing..."
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            // 3D Flip Animation
+            animation: 'logo-revolve 2.5s linear infinite'
           }}
         />
       </Box>
-
-      {showMessage && (
-        <Typography
-          variant="body2"
-          sx={{
-            color: 'text.secondary',
-            fontSize,
-            animation: 'fadeInOut 2s ease-in-out infinite',
-            '@keyframes fadeInOut': {
-              '0%, 100%': { opacity: 0.6 },
-              '50%': { opacity: 1 },
-            },
-          }}
-        >
-          {message}
-        </Typography>
-      )}
-    </Box>
+    </Stack>
   )
 }
 
 export default LungLoader
-

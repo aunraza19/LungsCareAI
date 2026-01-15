@@ -1,34 +1,25 @@
 import React, { useState } from 'react'
 import {
-  Container,
-  Paper,
   Typography,
   TextField,
   Button,
   Box,
   Card,
   CardContent,
-  Alert,
-  Chip,
   MenuItem,
-  Fade,
-  Stack
+  Stack,
+  Grid,
+  Alert
 } from '@mui/material'
-import {
-  Hearing as AudioIcon,
-  PlayArrow as PlayIcon,
-  Download as DownloadIcon,
-  Visibility as ViewIcon,
-  Air as LungIcon
-} from '@mui/icons-material'
+import { GraphicEq as AudioIcon, PlayArrow as PlayIcon } from '@mui/icons-material'
 import { toast } from 'react-toastify'
 import { useMutation, useQuery } from 'react-query'
 import ReactMarkdown from 'react-markdown'
 import FileDropzone from '../components/upload/FileDropzone'
 import AudioWaveform from '../components/upload/AudioWaveform'
 import LungLoader from '../components/common/LungLoader'
-import SecondOpinion from '../components/analysis/SecondOpinion'
 
+// Define the shape of the response
 interface AnalysisResult {
   success: boolean
   result: {
@@ -41,6 +32,13 @@ interface AnalysisResult {
   visualization_path?: string
 }
 
+// Define the shape of the variables passed to mutate
+interface MutationVars {
+  file: File
+  patientNumber: string
+  analysisType: string
+}
+
 const AudioAnalysis: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [patientNumber, setPatientNumber] = useState('')
@@ -48,258 +46,144 @@ const AudioAnalysis: React.FC = () => {
   const [result, setResult] = useState<AnalysisResult | null>(null)
 
   const { data: patientsData } = useQuery('patients', async () => {
-    const response = await fetch('/api/patients')
-    return response.json()
+    const res = await fetch('/api/patients')
+    return res.json()
   })
 
-  const analysisMutation = useMutation(
-    async (data: { file: File; patientNumber: string; analysisType: string }) => {
+  // Explicit generics: <Data, Error, Variables>
+  const analysisMutation = useMutation<AnalysisResult, Error, MutationVars>(
+    async (vars) => {
       const formData = new FormData()
-      formData.append('file', data.file)
-      formData.append('patient_number', data.patientNumber)
+      formData.append('file', vars.file)
+      formData.append('patient_number', vars.patientNumber)
 
       let endpoint = '/api/analyze/audio/basic'
-      if (data.analysisType === 'gradient') {
-        endpoint = '/api/analyze/audio/gradient'
-      } else if (data.analysisType === 'attention') {
-        endpoint = '/api/analyze/audio/attention'
-      }
+      if (vars.analysisType === 'gradient') endpoint = '/api/analyze/audio/gradient'
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        body: formData,
-      })
-
+      const response = await fetch(endpoint, { method: 'POST', body: formData })
       if (!response.ok) throw new Error('Analysis failed')
       return response.json()
     },
     {
-      onSuccess: (data: AnalysisResult) => {
+      onSuccess: (data) => {
         setResult(data)
-        toast.success('Audio analysis completed!')
+        toast.success('Analysis Complete')
       },
-      onError: (error: Error) => {
-        toast.error(`Analysis failed: ${error.message}`)
-      },
+      onError: (err) => {
+        toast.error(err.message)
+      }
     }
   )
 
-  const handleAnalysis = () => {
-    if (selectedFile && patientNumber) {
-      analysisMutation.mutate({ file: selectedFile, patientNumber, analysisType })
-    }
-  }
-
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 80) return 'success'
-    if (confidence >= 60) return 'warning'
-    return 'error'
-  }
-
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Fade in timeout={500}>
-        <Paper elevation={2} sx={{ p: 4 }}>
-          {/* Header */}
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <LungIcon
-              sx={{
-                fontSize: 64,
-                color: 'primary.main',
-                mb: 2,
-                animation: 'breathe 3s ease-in-out infinite',
-              }}
-            />
-            <Typography variant="h4" gutterBottom fontWeight="700">
-              Lung Audio Analysis
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Upload lung audio recordings for AI-powered analysis
-            </Typography>
-          </Box>
+    <Box>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" fontWeight={700}>Audio Analysis</Typography>
+        <Typography color="text.secondary">Analyze lung sounds (wheezing, crackles).</Typography>
+      </Box>
 
-          {/* Main Content */}
-          <Box sx={{ maxWidth: 800, mx: 'auto' }}>
-            <Stack spacing={3}>
-              {/* File Upload */}
-              <Box>
-                <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                  1. Upload Audio File
-                </Typography>
-                <FileDropzone
-                  onFileSelect={(file) => {
-                    setSelectedFile(file)
-                    setResult(null)
-                  }}
-                  accept={{ 'audio/*': ['.wav', '.mp3', '.m4a', '.flac'] }}
-                  selectedFile={selectedFile}
-                  icon={<AudioIcon sx={{ fontSize: 56, color: 'primary.main' }} />}
-                  title="Drag and drop audio file here"
-                  subtitle="WAV, MP3, M4A, FLAC (max 50MB)"
-                  color="primary"
-                />
-              </Box>
-
-              {/* Waveform Preview */}
-              {selectedFile && (
-                <Fade in timeout={300}>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Audio Preview
-                    </Typography>
-                    <AudioWaveform file={selectedFile} height={80} />
-                  </Box>
-                </Fade>
-              )}
-
-              {/* Patient & Analysis Type Selection */}
-              <Box>
-                <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                  2. Select Patient & Analysis Type
-                </Typography>
-                <Stack spacing={2}>
-                  <TextField
-                    fullWidth
-                    select
-                    label="Patient"
-                    value={patientNumber}
-                    onChange={(e) => setPatientNumber(e.target.value)}
-                  >
-                    {patientsData?.patients?.length > 0 ? (
-                      patientsData.patients.map((patient: any, index: number) => (
-                        <MenuItem key={`${patient.patient_number}-${index}`} value={patient.patient_number}>
-                          {patient.name} ({patient.patient_number})
-                        </MenuItem>
-                      ))
-                    ) : (
-                      <MenuItem value="" disabled>
-                        No patients registered
-                      </MenuItem>
-                    )}
-                  </TextField>
-
-                  <TextField
-                    fullWidth
-                    select
-                    label="Analysis Type"
-                    value={analysisType}
-                    onChange={(e) => setAnalysisType(e.target.value)}
-                  >
-                    <MenuItem value="basic">Basic Analysis</MenuItem>
-                    <MenuItem value="gradient">Gradient XAI</MenuItem>
-                    <MenuItem value="attention">Attention XAI</MenuItem>
-                  </TextField>
-                </Stack>
-              </Box>
-
-              {/* Analyze Button */}
-              <Button
-                variant="contained"
-                size="large"
-                fullWidth
-                disabled={!selectedFile || !patientNumber || analysisMutation.isLoading}
-                onClick={handleAnalysis}
-                startIcon={!analysisMutation.isLoading && <PlayIcon />}
-                sx={{ py: 1.5 }}
-              >
-                {analysisMutation.isLoading ? 'Analyzing...' : 'Start Analysis'}
-              </Button>
-
-              {/* Loading */}
-              {analysisMutation.isLoading && (
-                <LungLoader size="medium" message="Analyzing lung sounds..." />
-              )}
-
-              {/* Results */}
-              {result ? (
-                <Fade in timeout={500}>
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                      3. Analysis Results
-                    </Typography>
-                    <Card
-                      sx={{
-                        background: result.result.label === 'Normal'
-                          ? 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(77, 182, 172, 0.1) 100%)'
-                          : 'linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(244, 67, 54, 0.1) 100%)',
-                        border: 1,
-                        borderColor: result.result.label === 'Normal' ? 'success.main' : 'warning.main',
-                      }}
-                    >
-                      <CardContent>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                          <LungIcon
-                            sx={{
-                              fontSize: 48,
-                              color: result.result.label === 'Normal' ? 'success.main' : 'warning.main'
-                            }}
-                          />
-                          <Box>
-                            <Typography variant="h5" fontWeight={700}>
-                              {result.result.label}
-                            </Typography>
-                            <Chip
-                              label={`${result.result.confidence}% Confidence`}
-                              color={getConfidenceColor(result.result.confidence)}
-                              size="small"
-                            />
-                          </Box>
-                        </Box>
-
-                        {result.detailed_analysis && (
-                          <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
-                            <ReactMarkdown className="medical-text">
-                              {result.detailed_analysis}
-                            </ReactMarkdown>
-                          </Box>
-                        )}
-
-                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 2 }}>
-                          {result.report_path && (
-                            <Button
-                              variant="contained"
-                              startIcon={<DownloadIcon />}
-                              onClick={() => window.open(`/api/download/report/${result.report_path?.split('/').pop()}`, '_blank')}
-                              fullWidth
-                            >
-                              Download Report
-                            </Button>
-                          )}
-                          {result.visualization_path && (
-                            <Button
-                              variant="outlined"
-                              startIcon={<ViewIcon />}
-                              onClick={() => window.open(`/static/outputs/${result.visualization_path?.split('/').pop()}`, '_blank')}
-                              fullWidth
-                            >
-                              View Visualization
-                            </Button>
-                          )}
-                        </Stack>
-                      </CardContent>
-                    </Card>
-
-                    <Box sx={{ mt: 2 }}>
-                      <SecondOpinion
-                        primaryDiagnosis={result.result.label}
-                        confidence={result.result.confidence}
-                        analysisType="audio"
-                      />
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Stack spacing={3}>
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>1. Audio Upload</Typography>
+                  {!selectedFile ? (
+                    <FileDropzone
+                      onFileSelect={(f) => { setSelectedFile(f); setResult(null); }}
+                      accept={{ 'audio/*': ['.wav', '.mp3'] }}
+                      selectedFile={selectedFile}
+                      icon={<AudioIcon />}
+                      title="Upload Audio"
+                      subtitle="WAV or MP3"
+                      color="secondary"
+                    />
+                  ) : (
+                    <Box>
+                      <AudioWaveform file={selectedFile} height={80} />
+                      <Button size="small" onClick={() => setSelectedFile(null)} sx={{ mt: 1 }}>Remove</Button>
                     </Box>
-                  </Box>
-                </Fade>
+                  )}
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>2. Settings</Typography>
+                  <Stack spacing={2}>
+                    <TextField
+                      select
+                      fullWidth
+                      label="Patient"
+                      size="small"
+                      value={patientNumber}
+                      onChange={(e) => setPatientNumber(e.target.value)}
+                    >
+                      {patientsData?.patients?.map((p: any) => (
+                        <MenuItem key={p.patient_number} value={p.patient_number}>{p.name}</MenuItem>
+                      ))}
+                    </TextField>
+                    <TextField
+                      select
+                      fullWidth
+                      label="Method"
+                      size="small"
+                      value={analysisType}
+                      onChange={(e) => setAnalysisType(e.target.value)}
+                    >
+                      <MenuItem value="basic">Standard</MenuItem>
+                      <MenuItem value="gradient">Gradient XAI</MenuItem>
+                    </TextField>
+                  </Stack>
+                </Box>
+
+                <Button
+                  variant="contained"
+                  fullWidth
+                  disabled={!selectedFile || !patientNumber || analysisMutation.isLoading}
+                  onClick={() => {
+                    if (selectedFile) {
+                      analysisMutation.mutate({ file: selectedFile, patientNumber, analysisType })
+                    }
+                  }}
+                  startIcon={<PlayIcon />}
+                >
+                  Analyze
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={8}>
+          <Card sx={{ height: '100%', minHeight: 400 }}>
+            <CardContent>
+              {analysisMutation.isLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+                   <LungLoader />
+                </Box>
+              ) : result ? (
+                <Stack spacing={2}>
+                   <Alert severity={result.result.label === 'Normal' ? 'success' : 'warning'}>
+                     <Typography variant="h6" fontWeight={700}>
+                       Result: {result.result.label} ({result.result.confidence}%)
+                     </Typography>
+                   </Alert>
+                   {result.detailed_analysis && (
+                     <Box sx={{ p: 2, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+                       <ReactMarkdown>{result.detailed_analysis}</ReactMarkdown>
+                     </Box>
+                   )}
+                </Stack>
               ) : (
-                !analysisMutation.isLoading && (
-                  <Alert severity="info">
-                    Upload an audio file and select a patient to start analysis
-                  </Alert>
-                )
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300, color: 'text.secondary' }}>
+                  <Typography>Results area</Typography>
+                </Box>
               )}
-            </Stack>
-          </Box>
-        </Paper>
-      </Fade>
-    </Container>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </Box>
   )
 }
 

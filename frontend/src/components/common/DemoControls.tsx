@@ -1,24 +1,23 @@
 import React, { useState } from 'react'
 import {
   Box,
-  Paper,
-  Typography,
   Button,
-  IconButton,
+  Typography,
+  Paper,
+  Stack,
   Collapse,
-  Alert,
-  Divider,
-  Chip,
+  IconButton,
+  Tooltip,
+  useTheme,
   alpha
 } from '@mui/material'
 import {
-  Settings as SettingsIcon,
-  Refresh as RefreshIcon,
-  DataObject as DataIcon,
-  Delete as DeleteIcon,
-  ExpandMore,
-  ExpandLess,
-  Science as DemoIcon
+  Terminal,
+  Refresh,
+  BugReport,
+  Close,
+  KeyboardArrowUp,
+  KeyboardArrowDown
 } from '@mui/icons-material'
 import { toast } from 'react-toastify'
 
@@ -27,136 +26,108 @@ interface DemoControlsProps {
 }
 
 const DemoControls: React.FC<DemoControlsProps> = ({ onDataLoaded }) => {
-  const [expanded, setExpanded] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const theme = useTheme()
+  const [isOpen, setIsOpen] = useState(false)
+  const [isSeeding, setIsSeeding] = useState(false)
 
-  const loadSampleData = async () => {
-    setLoading(true)
+  const handleSeedData = async () => {
+    setIsSeeding(true)
     try {
-      const response = await fetch('/api/demo/load-sample-data', { method: 'POST' })
+      const response = await fetch('/api/seed-db', { method: 'POST' })
+      if (!response.ok) throw new Error('Failed to seed database')
+
       const data = await response.json()
-
-      if (data.success) {
-        toast.success('🎉 Sample data loaded! Refresh to see patients.')
-        onDataLoaded?.()
-      } else {
-        toast.error('Failed to load sample data')
-      }
+      toast.success(`System injected: ${data.message}`)
+      if (onDataLoaded) onDataLoaded()
     } catch (error) {
-      toast.error('Error loading sample data')
+      toast.error('Injection failed')
+      console.error(error)
     } finally {
-      setLoading(false)
-    }
-  }
-
-  const clearData = async () => {
-    if (!confirm('Are you sure you want to clear all patient data?')) return
-
-    setLoading(true)
-    try {
-      const response = await fetch('/api/demo/clear-data', { method: 'POST' })
-      const data = await response.json()
-
-      if (data.success) {
-        toast.success('Data cleared successfully')
-        onDataLoaded?.()
-      } else {
-        toast.error('Failed to clear data')
-      }
-    } catch (error) {
-      toast.error('Error clearing data')
-    } finally {
-      setLoading(false)
+      setIsSeeding(false)
     }
   }
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        mb: 3,
-        overflow: 'hidden',
-        border: 1,
-        borderColor: (theme) => alpha(theme.palette.warning.main, 0.3),
-        bgcolor: (theme) => alpha(theme.palette.warning.main, 0.05),
-        borderRadius: 2,
-      }}
-    >
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          p: 1.5,
-          cursor: 'pointer',
-        }}
-        onClick={() => setExpanded(!expanded)}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <DemoIcon sx={{ color: 'warning.main' }} />
-          <Typography variant="subtitle2" fontWeight={600}>
-            Demo Controls
+    <Box sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: 9999 }}>
+      <Collapse in={isOpen} orientation="vertical">
+        <Paper
+          sx={{
+            mb: 2,
+            p: 2,
+            width: 300,
+            bgcolor: alpha('#000', 0.9),
+            backdropFilter: 'blur(10px)',
+            border: '1px solid',
+            borderColor: 'primary.main',
+            borderRadius: 2
+          }}
+        >
+          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Terminal color="primary" fontSize="small" />
+              <Typography variant="subtitle2" sx={{ fontFamily: 'JetBrains Mono', color: 'primary.main' }}>
+                DEV_CONSOLE
+              </Typography>
+            </Stack>
+            <IconButton size="small" onClick={() => setIsOpen(false)} sx={{ color: 'text.secondary' }}>
+              <Close fontSize="small" />
+            </IconButton>
+          </Stack>
+
+          <Typography variant="caption" color="text.secondary" paragraph>
+            Use these controls to simulate data states for demonstration purposes.
           </Typography>
-          <Chip
-            label="DEV"
-            size="small"
-            color="warning"
-            sx={{ height: 20, fontSize: '0.7rem' }}
-          />
-        </Box>
-        <IconButton size="small">
-          {expanded ? <ExpandLess /> : <ExpandMore />}
-        </IconButton>
-      </Box>
 
-      <Collapse in={expanded}>
-        <Divider />
-        <Box sx={{ p: 2 }}>
-          <Alert severity="info" sx={{ mb: 2, borderRadius: 1 }}>
-            These controls are for demo/testing purposes. Use them to quickly populate or reset the database.
-          </Alert>
-
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<DataIcon />}
-              onClick={loadSampleData}
-              disabled={loading}
-              size="small"
-            >
-              Load Sample Patients
-            </Button>
-
+          <Stack spacing={1}>
             <Button
               variant="outlined"
-              color="error"
-              startIcon={<DeleteIcon />}
-              onClick={clearData}
-              disabled={loading}
               size="small"
+              startIcon={<BugReport />}
+              onClick={handleSeedData}
+              disabled={isSeeding}
+              sx={{
+                fontFamily: 'JetBrains Mono',
+                justifyContent: 'flex-start',
+                borderColor: alpha(theme.palette.primary.main, 0.3)
+              }}
             >
-              Clear All Data
+              {isSeeding ? 'INJECTING...' : 'SEED MOCK DATA'}
             </Button>
-
             <Button
               variant="outlined"
-              startIcon={<RefreshIcon />}
+              size="small"
+              startIcon={<Refresh />}
               onClick={() => window.location.reload()}
-              size="small"
+              color="secondary"
+              sx={{
+                fontFamily: 'JetBrains Mono',
+                justifyContent: 'flex-start',
+                borderColor: alpha(theme.palette.secondary.main, 0.3)
+              }}
             >
-              Refresh Page
+              SYSTEM REBOOT
             </Button>
-          </Box>
-
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-            Sample data includes 5 patients with various analysis reports (Pneumonia, COVID, TB, Normal cases).
-          </Typography>
-        </Box>
+          </Stack>
+        </Paper>
       </Collapse>
-    </Paper>
+
+      {!isOpen && (
+        <Tooltip title="Developer Controls" placement="left">
+          <IconButton
+            onClick={() => setIsOpen(true)}
+            sx={{
+              bgcolor: 'background.paper',
+              border: '1px solid',
+              borderColor: 'rgba(255,255,255,0.1)',
+              '&:hover': { bgcolor: 'primary.dark' }
+            }}
+          >
+            <Terminal />
+          </IconButton>
+        </Tooltip>
+      )}
+    </Box>
   )
 }
 
 export default DemoControls
-

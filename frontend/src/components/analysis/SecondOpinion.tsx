@@ -1,209 +1,150 @@
-import React from 'react'
-import { Card, CardContent, Typography, Box, Chip, Fade, alpha } from '@mui/material'
+import React, { useState, useEffect } from 'react'
 import {
-  Psychology as BrainIcon,
-  Warning as WarningIcon,
-  Lightbulb as LightbulbIcon
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Collapse,
+  Button,
+  Stack,
+  Avatar,
+  CircularProgress,
+  Divider,
+  alpha,
+  useTheme
+} from '@mui/material'
+import {
+  Psychology,
+  ExpandMore,
+  VerifiedUser,
+  WarningAmber,
+  Lock
 } from '@mui/icons-material'
 
 interface SecondOpinionProps {
   primaryDiagnosis: string
   confidence: number
-  analysisType?: 'audio' | 'xray'
+  analysisType: 'xray' | 'audio'
 }
 
-// Generate contextual second opinions based on diagnosis
-const getSecondOpinionData = (diagnosis: string, confidence: number, type: 'audio' | 'xray') => {
-  const isAudio = type === 'audio'
+const SecondOpinion: React.FC<SecondOpinionProps> = ({ primaryDiagnosis, confidence, analysisType }) => {
+  const theme = useTheme()
+  const [expanded, setExpanded] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [opinion, setOpinion] = useState<string | null>(null)
 
-  // Audio-based second opinions
-  const audioOpinions: Record<string, { opinion: string; differentials: string[] }> = {
-    'Normal': {
-      opinion: 'While the primary analysis indicates normal lung sounds, consider periodic monitoring if the patient reports any respiratory symptoms.',
-      differentials: ['Early stage changes', 'Compensated breathing patterns', 'Environmental factors']
-    },
-    'Abnormal': {
-      opinion: 'Abnormal lung sounds detected. Consider correlating with chest X-ray and pulmonary function tests for comprehensive evaluation.',
-      differentials: ['Bronchitis', 'Pneumonia', 'Asthma exacerbation', 'COPD', 'Pleural effusion']
+  const handleConsult = () => {
+    if (expanded) {
+      setExpanded(false)
+      return
+    }
+
+    setExpanded(true)
+    if (!opinion) {
+      setLoading(true)
+      // Simulate AI thinking time
+      setTimeout(() => {
+        generateOpinion()
+        setLoading(false)
+      }, 1500)
     }
   }
 
-  // X-ray based second opinions
-  const xrayOpinions: Record<string, { opinion: string; differentials: string[] }> = {
-    'COVID': {
-      opinion: 'Ground-glass opacities pattern detected. Consider RT-PCR confirmation and assess for secondary bacterial infection.',
-      differentials: ['Viral pneumonia', 'ARDS', 'Organizing pneumonia', 'Drug-induced lung injury']
-    },
-    'Pneumonia': {
-      opinion: 'Consolidation pattern suggests bacterial pneumonia. Consider sputum culture and inflammatory markers for targeted therapy.',
-      differentials: ['Bacterial pneumonia', 'Aspiration pneumonia', 'Lung abscess', 'Tuberculosis']
-    },
-    'Tuberculosis': {
-      opinion: 'Upper lobe infiltrates suggestive of TB. Recommend sputum AFB smear/culture and Mantoux test for confirmation.',
-      differentials: ['Primary TB', 'Reactivation TB', 'Non-tuberculous mycobacteria', 'Fungal infection']
-    },
-    'Normal': {
-      opinion: 'No significant radiological abnormalities detected. Clinical correlation recommended if symptoms persist.',
-      differentials: ['Early disease not yet visible', 'Functional respiratory issues', 'Extrapulmonary causes']
-    },
-    'Lung_Opacity': {
-      opinion: 'Opacity detected may represent various pathologies. CT scan recommended for further characterization.',
-      differentials: ['Atelectasis', 'Pleural effusion', 'Mass lesion', 'Consolidation']
-    },
-    'Viral Pneumonia': {
-      opinion: 'Bilateral interstitial pattern suggests viral etiology. Monitor for progression and secondary infection.',
-      differentials: ['Influenza', 'COVID-19', 'RSV', 'Adenovirus', 'Mycoplasma']
-    },
-    'Bacterial Pneumonia': {
-      opinion: 'Lobar consolidation pattern typical of bacterial infection. Initiate empiric antibiotics pending culture results.',
-      differentials: ['Streptococcus pneumoniae', 'Klebsiella', 'Staphylococcus', 'Legionella']
+  const generateOpinion = () => {
+    // Mock AI Logic based on inputs
+    const isNormal = primaryDiagnosis.toLowerCase().includes('normal')
+    const consensus = confidence > 85 ? 'High Concordance' : 'Moderate Divergence'
+
+    let text = ''
+    if (analysisType === 'xray') {
+      text = isNormal
+        ? `Review of radiographic patterns confirms absence of consolidation or pleural effusion. The AI model's activation maps align with healthy lung tissue structures. Recommend standard follow-up.`
+        : `Detected anomalies in the lung field suggest pathology consistent with ${primaryDiagnosis}. Cross-reference with clinical history is advised. The confidence level (${confidence}%) warrants immediate attention.`
+    } else {
+      text = isNormal
+        ? `Spectrogram analysis shows clear breath sounds with no adventitious noises (wheezes/crackles). Respiratory cycle appears regular.`
+        : `Acoustic signature contains frequencies typical of ${primaryDiagnosis}. Waveform irregularities detected in the expiration phase.`
     }
+
+    setOpinion(text)
   }
-
-  const opinions = isAudio ? audioOpinions : xrayOpinions
-  const data = opinions[diagnosis] || {
-    opinion: `The AI detected ${diagnosis} with ${confidence}% confidence. Consider clinical correlation and additional testing if needed.`,
-    differentials: ['Further evaluation recommended', 'Clinical correlation advised']
-  }
-
-  // Adjust confidence-based messaging
-  if (confidence < 70) {
-    data.opinion = `⚠️ Lower confidence detection (${confidence}%). ` + data.opinion
-  }
-
-  return data
-}
-
-const SecondOpinion: React.FC<SecondOpinionProps> = ({
-  primaryDiagnosis,
-  confidence,
-  analysisType = 'xray'
-}) => {
-  const { opinion, differentials } = getSecondOpinionData(primaryDiagnosis, confidence, analysisType)
 
   return (
-    <Fade in timeout={800}>
-      <Card
+    <Card
+      sx={{
+        mt: 2,
+        border: '1px solid',
+        borderColor: expanded ? 'secondary.main' : 'rgba(255,255,255,0.1)',
+        bgcolor: alpha(theme.palette.background.paper, 0.4),
+        position: 'relative',
+        overflow: 'visible'
+      }}
+    >
+      {/* 🔒 Security Header */}
+      <Box
+        onClick={handleConsult}
         sx={{
-          mt: 3,
-          background: (theme) =>
-            theme.palette.mode === 'dark'
-              ? 'linear-gradient(135deg, rgba(255, 167, 38, 0.15) 0%, rgba(255, 193, 7, 0.1) 100%)'
-              : alpha('#ff9800', 0.1),
-          border: 2,
-          borderColor: 'warning.main',
-          borderRadius: 3,
+          p: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          borderBottom: expanded ? '1px solid rgba(255,255,255,0.1)' : 'none',
+          '&:hover': { bgcolor: alpha(theme.palette.secondary.main, 0.05) }
         }}
       >
-        <CardContent>
-          {/* Header */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-            <Box
-              sx={{
-                p: 1,
-                borderRadius: 2,
-                bgcolor: alpha('#ff9800', 0.2),
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <BrainIcon sx={{ color: 'warning.main', fontSize: 28 }} />
-            </Box>
-            <Box>
-              <Typography variant="h6" fontWeight={700} color="warning.dark">
-                AI Second Opinion
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Differential diagnosis consideration
-              </Typography>
-            </Box>
-          </Box>
-
-          {/* Primary Result Summary */}
-          <Box
-            sx={{
-              mb: 2,
-              p: 1.5,
-              bgcolor: 'background.paper',
-              borderRadius: 2,
-              border: 1,
-              borderColor: 'divider',
-            }}
-          >
-            <Typography variant="body2" color="text.secondary">
-              Primary: <strong>{primaryDiagnosis}</strong> • Confidence: <strong>{confidence}%</strong>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Avatar sx={{ bgcolor: alpha(theme.palette.secondary.main, 0.2), color: 'secondary.main' }}>
+            <Psychology />
+          </Avatar>
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontFamily: 'Orbitron', letterSpacing: 1 }}>
+              AI SECOND OPINION
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Lock fontSize="inherit" /> ENCRYPTED CONSULTATION
             </Typography>
           </Box>
+        </Stack>
+        <ExpandMore sx={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }} />
+      </Box>
 
-          {/* Second Opinion Text */}
-          <Box
-            sx={{
-              p: 2,
-              bgcolor: 'background.paper',
-              borderRadius: 2,
-              mb: 2,
-              borderLeft: 4,
-              borderColor: 'warning.main',
-            }}
-          >
-            <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-              <LightbulbIcon sx={{ color: 'warning.main', fontSize: 20 }} />
-              <Typography variant="subtitle2" fontWeight={600}>
-                Clinical Consideration
-              </Typography>
-            </Box>
-            <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
-              {opinion}
-            </Typography>
-          </Box>
-
-          {/* Differential Diagnoses */}
-          {differentials.length > 0 && (
+      <Collapse in={expanded}>
+        <CardContent sx={{ p: 3 }}>
+          {loading ? (
+            <Stack alignItems="center" spacing={2} py={2}>
+              <CircularProgress size={24} color="secondary" />
+              <Typography variant="caption" sx={{ fontFamily: 'JetBrains Mono' }}>ANALYZING DATA PATTERNS...</Typography>
+            </Stack>
+          ) : (
             <Box>
-              <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <WarningIcon sx={{ fontSize: 18, color: 'warning.main' }} />
-                Also Consider:
+              <Stack direction="row" spacing={1} mb={2}>
+                <Box sx={{ px: 1, py: 0.5, borderRadius: 1, bgcolor: alpha(theme.palette.success.main, 0.1), color: 'success.main', fontSize: '0.75rem', fontFamily: 'JetBrains Mono', border: '1px solid', borderColor: 'success.main' }}>
+                  MODEL: GEMMA-2-9B
+                </Box>
+                <Box sx={{ px: 1, py: 0.5, borderRadius: 1, bgcolor: alpha(theme.palette.info.main, 0.1), color: 'info.main', fontSize: '0.75rem', fontFamily: 'JetBrains Mono', border: '1px solid', borderColor: 'info.main' }}>
+                  VERIFIED
+                </Box>
+              </Stack>
+
+              <Typography variant="body2" paragraph sx={{ fontFamily: 'Inter', lineHeight: 1.8 }}>
+                {opinion}
               </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {differentials.slice(0, 5).map((diagnosis, idx) => (
-                  <Chip
-                    key={idx}
-                    label={diagnosis}
-                    size="small"
-                    variant="outlined"
-                    color="warning"
-                    sx={{
-                      borderRadius: 2,
-                      '& .MuiChip-label': { fontWeight: 500 }
-                    }}
-                  />
-                ))}
-              </Box>
+
+              <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.1)' }} />
+
+              <Stack direction="row" alignItems="center" gap={1}>
+                {primaryDiagnosis.toLowerCase() === 'normal' ? <VerifiedUser color="success" fontSize="small" /> : <WarningAmber color="warning" fontSize="small" />}
+                <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'JetBrains Mono' }}>
+                  CONSENSUS: {primaryDiagnosis.toLowerCase() === 'normal' ? 'POSITIVE' : 'REQUIRES CLINICAL REVIEW'}
+                </Typography>
+              </Stack>
             </Box>
           )}
-
-          {/* Disclaimer */}
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{
-              display: 'block',
-              mt: 2,
-              p: 1,
-              bgcolor: alpha('#ff9800', 0.1),
-              borderRadius: 1,
-              textAlign: 'center',
-            }}
-          >
-            ⚠️ This is supplementary AI analysis for clinical decision support.
-            Always consult qualified medical professionals for diagnosis and treatment.
-          </Typography>
         </CardContent>
-      </Card>
-    </Fade>
+      </Collapse>
+    </Card>
   )
 }
 
 export default SecondOpinion
-

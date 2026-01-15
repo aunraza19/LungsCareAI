@@ -667,8 +667,17 @@ class MedicalRAGAgent:
         emb = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
         
         # Create Qdrant client to check if collection exists
-        client = QdrantClient(url=qdrant_url)
-        
+        try:
+            client = QdrantClient(url=qdrant_url, timeout=10)
+        except Exception as e:
+            print(f"⚠️ Warning: Could not connect to Qdrant at {qdrant_url}")
+            print(f"Error: {e}")
+            print("RAG will operate in limited mode without vector search.")
+            self.vectorstore = None
+            self.retriever = None
+            self._setup_llm()
+            return
+
         try:
             # Try to get collection info to see if it exists
             collection_info = client.get_collection(collection_name)
@@ -683,14 +692,32 @@ class MedicalRAGAgent:
             print("✅ Connected to existing collection!")
             
         except Exception as e:
-            print(f"Collection '{collection_name}' not found. Creating new collection...")
-            self._create_new_collection(add_input_to_metadata, emb, client, collection_name)
-        
+            print(f"⚠️ Collection '{collection_name}' not found or error accessing it: {e}")
+            try:
+                print("Attempting to create new collection...")
+                self._create_new_collection(add_input_to_metadata, emb, client, collection_name)
+            except Exception as create_error:
+                print(f"⚠️ Could not create collection: {create_error}")
+                print("RAG will operate in limited mode without vector search.")
+                self.vectorstore = None
+                self.retriever = None
+                self._setup_llm()
+                return
+
         # Optimize retriever for faster responses (HNSW will be used automatically)
-        self.retriever = self.vectorstore.as_retriever(
-            search_kwargs={"k": 5}  # Keep simple - HNSW optimization happens at collection level
-        )
-        
+        try:
+            self.retriever = self.vectorstore.as_retriever(
+                search_kwargs={"k": 3, "score_threshold": 0.5}  # Reduce k and add threshold to avoid errors
+            )
+        except Exception as e:
+            print(f"⚠️ Error creating retriever: {e}")
+            print("RAG will operate in limited mode without vector search.")
+            self.retriever = None
+
+        self._setup_llm()
+
+    def _setup_llm(self):
+        """Setup the LLM connection separately"""
         print("🤖 Connecting to Gemini 2.0 Flash...")
         # Load environment variables
         load_dotenv()
@@ -1170,37 +1197,102 @@ CLINICAL REPORT:"""
             return f"Error processing X-ray result: {str(e)}"
 
     def answer_general_question(self, question: str) -> str:
-        """Answer general medical questions using RAG"""
+        """Answer general medical questions using RAG with robust error handling"""
+        rag_failed = False
+        context = ""
+
+        # Only try RAG if retriever is available
+        if self.retriever is not None:
+            try:
+                docs = self.retriever.invoke(question)
+                context = "\n\n".join([doc.page_content for doc in docs[:3]])
+            except Exception as e:
+                print(f"Warning: RAG retrieval failed: {e}")
+                context = ""  # Continue without RAG context
+                rag_failed = True
+        else:
+            print("Warning: Retriever not available, operating without RAG context")
+            rag_failed = True
+
         try:
-            docs = self.retriever.invoke(question)
-            context = "\n\n".join([doc.page_content for doc in docs[:3]])
+            prompt = self.QUESTION_PROMPT.format(
+                persona=self.PERSONA,
+                question=question,
+                context=context if context else "No additional medical context available.",
+                language="english"
+            )
+
+            response = self.llm.invoke(prompt)
+            if hasattr(response, 'content'):
+                return response.content
+            return str(response)
+
         except Exception as e:
-            print(f"Warning: RAG retrieval failed: {e}")
-            context = ""  # Continue without RAG context
+            error_str = str(e)
+            print(f"Error getting LLM response: {error_str}")
 
-        prompt = self.QUESTION_PROMPT.format(
-            persona=self.PERSONA,
-            question=question,
-            context=context if context else "No additional medical context available.",
-            language="english"
-        )
-        
-        response = self.llm.invoke(prompt)
-        if hasattr(response, 'content'):
-            return response.content
-        return str(response)
+            # Handle quota exceeded error
+            if "quota" in error_str.lower() or "429" in error_str:
+                return """⚠️ **Service Temporarily Unavailable**
 
-    def answer_question_with_context(self, question: str, language: str = "english", patient_info: dict = None, 
+I apologize, but I've reached my daily API quota limit. This is a temporary limitation of the free tier service.
+
+**What you can do:**
+• Try again in a few hours when the quota resets
+• For immediate assistance, please consult with a healthcare professional
+
+**Your question was:** "{}"
+
+Thank you for your understanding! 🏥""".format(question)
+
+            # Handle other errors
+            elif rag_failed or "qdrant" in error_str.lower():
+                return """⚠️ **Limited Response Mode**
+
+The medical knowledge database is temporarily unavailable.
+
+**Your question:** "{}"
+
+**General Guidance:**
+• For medical concerns, always consult a qualified healthcare professional
+• Emergency symptoms require immediate medical attention
+• This system provides educational support only
+
+Please try your question again later, or contact a healthcare provider for specific medical advice. 🏥""".format(question)
+
+            else:
+                return """⚠️ **Service Error**
+
+I encountered an unexpected error while processing your request.
+
+**Your question:** "{}"
+
+**Next Steps:**
+• Please try rephrasing your question
+• If the issue persists, contact technical support
+• For urgent medical concerns, please consult a healthcare professional immediately
+
+Thank you for your patience! 🏥""".format(question)
+
+    def answer_question_with_context(self, question: str, language: str = "english", patient_info: dict = None,
                                    patient_reports_context: str = "", chat_context: str = "") -> str:
-        """Answer questions with patient context and chat history - Enhanced version"""
+        """Answer questions with patient context and chat history - Enhanced version with robust error handling"""
         # Get relevant medical knowledge from RAG with error handling
         medical_context = ""
-        try:
-            docs = self.retriever.invoke(question)
-            medical_context = "\n\n".join([doc.page_content for doc in docs[:4]])
-        except Exception as e:
-            print(f"Warning: RAG retrieval failed: {e}")
-            medical_context = ""  # Continue without RAG context
+        rag_failed = False
+
+        # Only try RAG if retriever is available
+        if self.retriever is not None:
+            try:
+                docs = self.retriever.invoke(question)
+                medical_context = "\n\n".join([doc.page_content for doc in docs[:4]])
+            except Exception as e:
+                print(f"Warning: RAG retrieval failed: {e}")
+                medical_context = ""  # Continue without RAG context
+                rag_failed = True
+        else:
+            print("Warning: Retriever not available, operating without RAG context")
+            rag_failed = True
 
         # Build comprehensive context with clear sections
         context_parts = []
@@ -1228,19 +1320,69 @@ CLINICAL REPORT:"""
 
         full_context = "\n\n".join(context_parts) if context_parts else "No additional context available."
 
-        # Use enhanced prompt with persona
-        prompt = self.QUESTION_PROMPT.format(
-            persona=self.PERSONA,
-            context=full_context,
-            question=question,
-            language=language
-        )
+        # Try to get response from Gemini with error handling
+        try:
+            # Use enhanced prompt with persona
+            prompt = self.QUESTION_PROMPT.format(
+                persona=self.PERSONA,
+                context=full_context,
+                question=question,
+                language=language
+            )
 
-        response = self.llm.invoke(prompt)
-        # Handle AIMessage object from newer versions of langchain-google-genai
-        if hasattr(response, 'content'):
-            return response.content
-        return str(response)
+            response = self.llm.invoke(prompt)
+            # Handle AIMessage object from newer versions of langchain-google-genai
+            if hasattr(response, 'content'):
+                return response.content
+            return str(response)
+
+        except Exception as e:
+            error_str = str(e)
+            print(f"Error getting LLM response: {error_str}")
+
+            # Handle quota exceeded error
+            if "quota" in error_str.lower() or "429" in error_str:
+                return """⚠️ **Service Temporarily Unavailable**
+
+I apologize, but I've reached my daily API quota limit. This is a temporary limitation of the free tier service.
+
+**What you can do:**
+• Try again in a few hours when the quota resets
+• For immediate assistance, please consult with a healthcare professional
+• Your patient records and analysis results are safely stored
+
+**Your question was:** "{}"
+
+Thank you for your understanding! 🏥""".format(question)
+
+            # Handle other errors with a fallback response
+            elif rag_failed or "qdrant" in error_str.lower():
+                return """⚠️ **Limited Response Mode**
+
+The medical knowledge database is temporarily unavailable, but I can still assist you with basic queries.
+
+**Your question:** "{}"
+
+**General Guidance:**
+• For lung health concerns, always consult a qualified pulmonologist
+• Emergency symptoms (severe chest pain, difficulty breathing) require immediate medical attention
+• Regular check-ups are important for respiratory health
+
+Please try your question again, or contact a healthcare provider for specific medical advice. 🏥""".format(question)
+
+            else:
+                return """⚠️ **Service Error**
+
+I encountered an unexpected error while processing your request.
+
+**Your question:** "{}"
+
+**Next Steps:**
+• Please try rephrasing your question
+• If the issue persists, contact technical support
+• For urgent medical concerns, please consult a healthcare professional immediately
+
+Thank you for your patience! 🏥""".format(question)
 
     def setup_agent(self):
         print("🔧 Setting up optimized audio and X-ray analysis tools...")

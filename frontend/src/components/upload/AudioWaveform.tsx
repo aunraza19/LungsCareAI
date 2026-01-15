@@ -1,285 +1,129 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { Box, IconButton, Typography, Slider, alpha, useTheme } from '@mui/material'
-import {
-  PlayArrow,
-  Pause,
-  VolumeUp,
-  VolumeOff,
-  Replay10,
-  Forward10
-} from '@mui/icons-material'
+import React, { useEffect, useRef } from 'react'
+import { Box, useTheme, alpha } from '@mui/material'
 
 interface AudioWaveformProps {
   file: File
   height?: number
 }
 
-const AudioWaveform: React.FC<AudioWaveformProps> = ({ file, height = 100 }) => {
-  const theme = useTheme()
+const AudioWaveform: React.FC<AudioWaveformProps> = ({ file, height = 120 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const audioRef = useRef<HTMLAudioElement>(null)
-  const animationRef = useRef<number>()
-  const audioContextRef = useRef<AudioContext | null>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null)
-
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [isMuted, setIsMuted] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  const [audioUrl, setAudioUrl] = useState<string>('')
-  const [waveformData, setWaveformData] = useState<number[]>([])
+  const theme = useTheme()
 
   useEffect(() => {
-    const url = URL.createObjectURL(file)
-    setAudioUrl(url)
+    if (!file || !canvasRef.current) return
 
-    // Generate waveform data from audio file
-    generateWaveform(file)
-
-    return () => {
-      URL.revokeObjectURL(url)
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-      }
-    }
-  }, [file])
-
-  const generateWaveform = async (audioFile: File) => {
-    try {
-      const arrayBuffer = await audioFile.arrayBuffer()
-      const audioContext = new AudioContext()
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-
-      const rawData = audioBuffer.getChannelData(0)
-      const samples = 100 // Number of bars in waveform
-      const blockSize = Math.floor(rawData.length / samples)
-      const filteredData: number[] = []
-
-      for (let i = 0; i < samples; i++) {
-        let blockStart = blockSize * i
-        let sum = 0
-        for (let j = 0; j < blockSize; j++) {
-          sum += Math.abs(rawData[blockStart + j])
-        }
-        filteredData.push(sum / blockSize)
-      }
-
-      // Normalize
-      const maxVal = Math.max(...filteredData)
-      const normalizedData = filteredData.map(n => n / maxVal)
-      setWaveformData(normalizedData)
-
-      audioContext.close()
-    } catch (error) {
-      console.error('Error generating waveform:', error)
-      // Fallback: generate random waveform for demo
-      const fallbackData = Array.from({ length: 100 }, () => Math.random() * 0.8 + 0.2)
-      setWaveformData(fallbackData)
-    }
-  }
-
-  useEffect(() => {
-    if (waveformData.length > 0 && canvasRef.current) {
-      drawWaveform()
-    }
-  }, [waveformData, currentTime, duration, theme.palette.mode])
-
-  const drawWaveform = () => {
     const canvas = canvasRef.current
-    if (!canvas) return
-
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    // Set canvas dimensions
     const dpr = window.devicePixelRatio || 1
     const rect = canvas.getBoundingClientRect()
-
     canvas.width = rect.width * dpr
-    canvas.height = rect.height * dpr
+    canvas.height = height * dpr
     ctx.scale(dpr, dpr)
 
-    const width = rect.width
-    const barWidth = width / waveformData.length
-    const progressPercent = duration > 0 ? currentTime / duration : 0
+    // Audio Context Setup
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const reader = new FileReader()
+
+    reader.onload = async (e) => {
+      const arrayBuffer = e.target?.result as ArrayBuffer
+      try {
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+        drawWaveform(audioBuffer, ctx, rect.width, height)
+      } catch (err) {
+        console.error('Error decoding audio data', err)
+      }
+    }
+    reader.readAsArrayBuffer(file)
+
+    return () => {
+      audioContext.close()
+    }
+  }, [file, height, theme])
+
+  const drawWaveform = (audioBuffer: AudioBuffer, ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    const rawData = audioBuffer.getChannelData(0) // We only use the first channel
+    const samples = 200 // Number of bars
+    const step = Math.floor(rawData.length / samples)
+    const barWidth = width / samples
 
     ctx.clearRect(0, 0, width, height)
 
-    waveformData.forEach((value, index) => {
-      const x = index * barWidth
-      const barHeight = value * height * 0.8
-      const y = (height - barHeight) / 2
+    // Gradient
+    const gradient = ctx.createLinearGradient(0, 0, 0, height)
+    gradient.addColorStop(0, theme.palette.primary.main)
+    gradient.addColorStop(1, theme.palette.secondary.main)
 
-      // Color based on progress
-      const isPlayed = index / waveformData.length < progressPercent
+    ctx.fillStyle = gradient
 
-      ctx.fillStyle = isPlayed
-        ? '#4db6ac' // Medical teal for played portion
-        : alpha('#4db6ac', 0.3) // Dimmed for unplayed
+    // Draw Grid Lines (Background)
+    ctx.strokeStyle = alpha(theme.palette.text.primary, 0.1)
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(0, height / 2)
+    ctx.lineTo(width, height / 2)
+    ctx.stroke()
 
-      ctx.beginPath()
-      ctx.roundRect(x + 1, y, barWidth - 2, barHeight, 2)
-      ctx.fill()
-    })
-  }
-
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime)
-    }
-  }
-
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration)
-    }
-  }
-
-  const togglePlayPause = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause()
-      } else {
-        audioRef.current.play()
+    // Draw Bars
+    for (let i = 0; i < samples; i++) {
+      let min = 1.0
+      let max = -1.0
+      for (let j = 0; j < step; j++) {
+        const datum = rawData[i * step + j]
+        if (datum < min) min = datum
+        if (datum > max) max = datum
       }
-      setIsPlaying(!isPlaying)
+
+      const amplitude = Math.max(0.1, max - min) // Ensure visible line even if silent
+      const barHeight = amplitude * height
+
+      // Neon Glow
+      ctx.shadowBlur = 10
+      ctx.shadowColor = theme.palette.primary.main
+
+      // Rounded Caps Rect
+      const x = i * barWidth + (barWidth * 0.2) // Gap
+      const y = (height - barHeight) / 2
+      const w = barWidth * 0.6
+      const h = barHeight
+
+      ctx.fillRect(x, y, w, h)
     }
-  }
-
-  const toggleMute = () => {
-    if (audioRef.current) {
-      audioRef.current.muted = !isMuted
-      setIsMuted(!isMuted)
-    }
-  }
-
-  const handleSeek = (_: Event, value: number | number[]) => {
-    if (audioRef.current && typeof value === 'number') {
-      audioRef.current.currentTime = value
-      setCurrentTime(value)
-    }
-  }
-
-  const skip = (seconds: number) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = Math.max(0, Math.min(duration, audioRef.current.currentTime + seconds))
-    }
-  }
-
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || !audioRef.current) return
-
-    const rect = canvasRef.current.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const percent = x / rect.width
-    const newTime = percent * duration
-
-    audioRef.current.currentTime = newTime
-    setCurrentTime(newTime)
   }
 
   return (
-    <Box sx={{
-      p: 2,
-      bgcolor: alpha('#4db6ac', 0.1),
-      borderRadius: 2,
-      border: 1,
-      borderColor: alpha('#4db6ac', 0.3),
-    }}>
-      <audio
-        ref={audioRef}
-        src={audioUrl}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={() => setIsPlaying(false)}
+    <Box
+      sx={{
+        width: '100%',
+        height,
+        bgcolor: alpha(theme.palette.background.default, 0.5),
+        borderRadius: 2,
+        border: '1px solid rgba(255,255,255,0.05)',
+        position: 'relative',
+        overflow: 'hidden'
+      }}
+    >
+      <canvas
+        ref={canvasRef}
+        style={{ width: '100%', height: '100%' }}
       />
-
-      {/* Waveform Canvas */}
-      <Box
-        sx={{
-          mb: 2,
-          cursor: 'pointer',
-          borderRadius: 1,
-          overflow: 'hidden',
-        }}
-      >
-        <canvas
-          ref={canvasRef}
-          onClick={handleCanvasClick}
-          style={{
-            width: '100%',
-            height: `${height}px`,
-            display: 'block',
-          }}
-        />
-      </Box>
-
-      {/* Progress Slider */}
-      <Slider
-        value={currentTime}
-        max={duration || 100}
-        onChange={handleSeek}
-        sx={{
-          color: '#4db6ac',
-          '& .MuiSlider-thumb': {
-            width: 12,
-            height: 12,
-            '&:hover': {
-              boxShadow: '0 0 0 8px rgba(77, 182, 172, 0.16)',
-            },
-          },
-          '& .MuiSlider-rail': {
-            opacity: 0.3,
-          },
-        }}
-      />
-
-      {/* Controls */}
+      {/* 🔮 Scanning Overlay */}
       <Box sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <IconButton onClick={() => skip(-10)} size="small" color="inherit">
-            <Replay10 />
-          </IconButton>
-
-          <IconButton
-            onClick={togglePlayPause}
-            color="primary"
-            sx={{
-              bgcolor: alpha('#4db6ac', 0.2),
-              '&:hover': {
-                bgcolor: alpha('#4db6ac', 0.3),
-              }
-            }}
-          >
-            {isPlaying ? <Pause /> : <PlayArrow />}
-          </IconButton>
-
-          <IconButton onClick={() => skip(10)} size="small" color="inherit">
-            <Forward10 />
-          </IconButton>
-
-          <IconButton onClick={toggleMute} size="small" color="inherit">
-            {isMuted ? <VolumeOff /> : <VolumeUp />}
-          </IconButton>
-        </Box>
-
-        <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-          {formatTime(currentTime)} / {formatTime(duration)}
-        </Typography>
-      </Box>
+        position: 'absolute',
+        top: 0, bottom: 0, width: 2,
+        background: theme.palette.primary.main,
+        boxShadow: `0 0 10px ${theme.palette.primary.main}`,
+        animation: 'scan 4s linear infinite',
+        '@keyframes scan': {
+           '0%': { left: '-5%' },
+           '100%': { left: '105%' }
+        }
+      }} />
     </Box>
   )
 }
 
 export default AudioWaveform
-
